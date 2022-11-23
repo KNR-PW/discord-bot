@@ -1,2 +1,61 @@
-# discord-bot
-KNR discord bot 
+<a href="https://knr.edu.pl/">
+    <img src="https://knr.edu.pl/images/KNR_log.png" alt="KNR logo" title="KNR" align="right" height="100" />
+</a>
+
+# Discord Bot
+
+![GitHub issues](https://img.shields.io/github/issues-raw/KNR-PW/discord-bot)
+![GitHub last commit](https://img.shields.io/github/last-commit/KNR-PW/discord-bot)
+![GitHub](https://img.shields.io/github/license/KNR-PW/discord-bot)
+
+&nbsp;
+<div align="center">
+
+The aim of this project is to create a personalized bot to help with server management on discord, using the `discord.py` library. At the moment the project is in the development phase. Ultimately, the bot is supposed to place provided messages on the text channel, collect data from the server and save it to the google sheet.
+
+[Getting started](#getting-started) •
+[Discord Commands](#discord-commands) •
+[License](#license) 
+
+</div>
+&nbsp;
+
+
+## Getting started
+
+---
+
+1. Create a Bot account. For this, you can find many tutorials on the web. I personally recommend [this](https://discordpy.readthedocs.io/en/stable/discord.html) or [that one](https://www.androidpolice.com/how-to-make-discord-bot/).
+
+2. Install necessary libraries. Most importantly
+[discord.py](https://discordpy.readthedocs.io/en/stable/intro.html)
+
+3. If you decide to run your bot from a personal computer, with you only having access to the code, you can replace `DISCORD_TOKEN` with the token acquired when creating the bot: 
+
+   ```python
+   client.run(os.getenv("DISCORD_TOKEN"))
+   ```
+
+    Otherwise, it is advised to store your token in a separate file. For this create `.env` file inside the same folder as the `bot.py` file, where the following line is to be put:
+
+   ```python
+   DISCORD_TOKEN="Your token goes here"
+   ```
+4. You can now run your bot.
+
+## Discord commands
+
+---
+This is a list of currently supported commands in the text chat:
+
+```text
+!hello - Simple "Hello!" reply in return
+!hello Bot - Reply with mentioning to user message
+```
+
+## License
+
+---
+Copyright © 2022 KNR
+
+This project is [MIT](https://choosealicense.com/licenses/mit/) licenced.
