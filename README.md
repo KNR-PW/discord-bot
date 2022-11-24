@@ -27,16 +27,19 @@ The aim of this project is to create a personalized bot to help with server mana
 
 1. Create a Bot account. For this, you can find many tutorials on the web. I personally recommend [this](https://discordpy.readthedocs.io/en/stable/discord.html) or [that one](https://www.androidpolice.com/how-to-make-discord-bot/).
 
-2. Install necessary libraries. Most importantly
-[discord.py](https://discordpy.readthedocs.io/en/stable/intro.html)
+2. Install necessary libraries in terminal:
 
-3. If you decide to run your bot from a personal computer, with you only having access to the code, you can replace `DISCORD_TOKEN` with the token acquired when creating the bot: 
+   ```powershell
+   pip install -r requirements.txt
+   ```
+
+3. If you decide to run your bot from a personal computer, with you only having access to the code, you can replace `DISCORD_TOKEN`variable inside the quote in the `bot.py` with your personal token acquired when creating the bot: 
 
    ```python
    client.run(os.getenv("DISCORD_TOKEN"))
    ```
 
-    Otherwise, it is advised to store your token in a separate file. For this create `.env` file inside the same folder as the `bot.py` file, where the following line is to be put:
+    Otherwise, it is advised to store your token in a separate file. For this create `.env` file inside the same folder as the `bot.py` file. Inside put following line:
 
    ```python
    DISCORD_TOKEN="Your token goes here"
