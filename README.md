@@ -33,7 +33,7 @@ The aim of this project is to create a personalized bot to help with server mana
    pip install -r requirements.txt
    ```
 
-3. If you decide to run your bot from a personal computer, with you only having access to the code, you can replace `DISCORD_TOKEN`variable inside the quote in the `bot.py` with your personal token acquired when creating the bot: 
+3. If you decide to run your bot from a personal computer, with only you having access to the code, you can replace `DISCORD_TOKEN`variable inside the quote in the `bot.py` with your token acquired when creating the bot: 
 
    ```python
    client.run(os.getenv("DISCORD_TOKEN"))
@@ -44,7 +44,20 @@ The aim of this project is to create a personalized bot to help with server mana
    ```python
    DISCORD_TOKEN="Your token goes here"
    ```
-4. You can now run your bot.
+
+   If you want to place this bot on your github account, before doing so you should create an empty `.gitignore` file, where you should write:
+
+   ```text
+   .env
+   ```
+
+   This will prevent git from accidentally sending your token for others to see.
+
+4. You can now run your bot. Open a command line and change the directory to the path of your bot files. Next type in the word python, or python3 if you have both versions, followed by the file name of your bot, like this:
+
+   ```text
+   python3 bot.py
+   ```
 
 ## Discord commands
 
