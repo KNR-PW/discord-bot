@@ -3,6 +3,9 @@ name: (Pylint + Flake8) linters + Black formatter
 on:
   push:
   pull_request:
+
+jobs:
+  lint:
     runs-on: ubuntu-latest
     steps:
       - name: Set up Python 3.10
