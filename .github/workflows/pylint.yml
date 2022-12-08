@@ -30,6 +30,6 @@ jobs:
     needs: formating
     steps:
       - name: Linting with pylint
-        run: pylint $(git ls-files '*.py')
+        run: find . -name '*.py' -exec pylint {} \;
       - name: Linting with flake8
         uses: py-actions/flake8@v2
