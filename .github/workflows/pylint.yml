@@ -3,9 +3,6 @@ name: (Pylint + Flake8) linters + Black formatter
 on:
   push:
   pull_request:
-
-jobs:
-  setup:
     runs-on: ubuntu-latest
     steps:
       - name: Set up Python 3.10
@@ -18,17 +15,9 @@ jobs:
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           pip install pylint
-  formating:
-    runs-on: ubuntu-latest
-    needs: setup
-    steps:
       - name: Running black formatter
         uses: actions/checkout@v2
       - uses: psf/black@stable
-  lint:
-    runs-on: ubuntu-latest
-    needs: formating
-    steps:
       - name: Linting with pylint
         run: find . -name '*.py' -exec pylint {} \;
       - name: Linting with flake8
