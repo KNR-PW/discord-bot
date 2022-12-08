@@ -22,6 +22,6 @@ jobs:
         uses: actions/checkout@v2
       - uses: psf/black@stable
       - name: Linting with pylint
-        run: find . -name '*.py' -exec pylint {} \;
+        run:  pylint $(git ls-files '*.py')
       - name: Linting with flake8
         uses: py-actions/flake8@v2
