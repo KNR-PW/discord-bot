@@ -10,7 +10,7 @@ jobs:
     steps:
       - name: Set up Python 3.10
         uses: actions/checkout@v3
-      - uses: actions/setup-python@v3
+      - uses: actions/setup-python@v4
         with:
           python-version: "3.10"
       - name: Install dependencies
@@ -19,9 +19,9 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           pip install pylint
       - name: Running black formatter
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - uses: psf/black@stable
       - name: Linting with pylint
         run:  pylint $(git ls-files '*.py')
       - name: Linting with flake8
-        uses: py-actions/flake8@v2
+        uses: TrueBrain/actions-flake8@v2
