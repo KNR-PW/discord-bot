@@ -18,7 +18,7 @@ jobs:
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           pip install pylint
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
       - name: Running black formatter
         uses: psf/black@stable
       - name: Linting with pylint
