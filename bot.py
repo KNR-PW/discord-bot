@@ -5,10 +5,10 @@
 import time
 import datetime
 import os
-import asyncio
 import discord
 from discord.ext import commands, tasks
 from dotenv import load_dotenv
+import gspread
 
 
 load_dotenv()  # loads your local .env file with discord token
@@ -18,9 +18,6 @@ intents.message_content = True  # pylint: disable=assigning-non-slot
 intents.members = True  # pylint: disable=assigning-non-slot
 
 bot = commands.Bot(command_prefix="!", intents=intents)
-
-
-# print(f"Message from {message.author}: {message.content}")
 
 
 @bot.event
@@ -45,7 +42,7 @@ async def hello(ctx):
 @bot.command()
 async def server(ctx):
     """Reads the message from the chat and returns
-    embed_1ed message with server stats.
+    embeded message with server stats.
 
     Reads the message if the message starts with the "command_prefix"
     that was set in when initializing commands.Bot object and ends with
@@ -65,6 +62,10 @@ async def server(ctx):
     """
     now = datetime.datetime.now()
 
+    google_credentials = gspread.service_account(filename="credentials.json")
+    spreadsheet = google_credentials.open("Python")
+    current_gsheet_a1_value = spreadsheet.sheet1.acell("A1").value
+
     embed_1 = discord.Embed(
         title=f"{ctx.guild.name} Info",
         description="Information of this Server",
@@ -72,8 +73,7 @@ async def server(ctx):
     )
     embed_1.add_field(name="🆔Server ID", value=f"{ctx.guild.id}", inline=True)
     embed_1.add_field(
-        name="📆Created On", value=ctx.guild.created_at.strftime("%b %d %Y"),
-        inline=True
+        name="📆Created On", value=ctx.guild.created_at.strftime("%b %d %Y"), inline=True
     )
     embed_1.add_field(name="👑Owner", value=f"{ctx.guild.owner}", inline=True)
     embed_1.add_field(
@@ -86,36 +86,46 @@ async def server(ctx):
         value=f"{em_t_channels} Text | {em_v_channels} Voice",
         inline=True,
     )
+    rolelist = [r.mention for r in ctx.guild.roles if r != ctx.guild.default_role]
+    roles = ", ".join(rolelist)
     embed_1.add_field(
         name="Roles",
-        value=f'{", ".join([str(r.name) for r in ctx.guild.roles])}',
-        inline=True,
+        value=roles,
+        # value=f'{", ".join([str(r.name) for r in ctx.guild.roles])}'
+        inline=False,
     )
     embed_1.set_thumbnail(url=ctx.guild.icon)
     embed_1.set_footer(text="⭐PLACEHOLDER⭐")
-    embed_1.set_author(name=f"{ctx.author.name}",
-                       icon_url=ctx.message.author.avatar)
+    embed_1.set_author(name=f"{ctx.author.name}", icon_url=ctx.message.author.avatar)
+    embed_1.add_field(
+        name="Description", value=f"""{current_gsheet_a1_value}""", inline=False
+    )
     embed_1.add_field(
         name="Last Updated:",
         value=f"""This message auto-checks for changes every 15 seconds.
     Last checked: {now.strftime('%Y-%m-%d, %H:%M:%S')}""",
-        inline=True,
+        inline=False,
     )
+
     update = await ctx.send(embed=embed_1)
-    await asyncio.sleep(10)
 
     @tasks.loop(seconds=15.0)
     async def update_message():
         now = datetime.datetime.now()
+        current_gsheet_a1_value = spreadsheet.sheet1.acell("A1").value
         embed_1.set_field_at(
-            6,
+            6, name="Description", value=f"{current_gsheet_a1_value}", inline=False
+        )
+        embed_1.set_field_at(
+            7,
             name="Last Updated:",
             value=f"""This message auto-checks for changes every 15 seconds.
         Last checked: {now.strftime('%Y-%m-%d, %H:%M:%S')}""",
-            inline=True,
+            inline=False,
         )
         await update.edit(embed=embed_1)
         now = []
+        current_gsheet_a1_value = []
 
     update_message.start()
 
