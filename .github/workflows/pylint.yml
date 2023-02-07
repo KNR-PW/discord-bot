@@ -22,6 +22,11 @@ jobs:
       - name: Running black formatter
         uses: psf/black@stable
       - name: Linting with pylint
+          options:
+            max-line-length: 88
         run: pylint $(git ls-files '*.py')
       - name: Linting with flake8
         uses: TrueBrain/actions-flake8@v2
+        with:
+          path: src
+          max_line_length: 88
