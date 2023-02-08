@@ -24,7 +24,7 @@ jobs:
       - name: Linting with pylint
         run: pylint --max-line-length=88 $(git ls-files '*.py')
       - name: Linting with flake8
-        uses: TrueBrain/actions-flake8@v2
+        uses: py-actions/flake8@v2
         with:
-          path: src
-          max_line_length: 88
+          path: "src"
+          max_line_length: "88"
