@@ -26,5 +26,5 @@ jobs:
       - name: Linting with flake8
         uses: py-actions/flake8@v2
         with:
-          path: "src"
+          path: "./"
           max-line-length: "88"
