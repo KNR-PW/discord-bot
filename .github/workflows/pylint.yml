@@ -27,4 +27,4 @@ jobs:
         uses: py-actions/flake8@v2
         with:
           path: "src"
-          max_line_length: "88"
+          max-line-length: "88"
