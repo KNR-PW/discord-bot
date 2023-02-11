@@ -3,12 +3,10 @@
 """This module deploys discord bot using discord.py library."""
 
 import time
-import datetime
 import os
 import discord
-from discord.ext import commands, tasks
+from discord.ext import commands
 from dotenv import load_dotenv
-import gspread
 
 
 load_dotenv()  # loads your local .env file with discord token
@@ -40,6 +38,145 @@ async def hello(ctx):
 
 
 @bot.command()
+async def count_members(ctx, *, role_names_str: str):
+    """Reads the message from the chat and returns the number of members
+    that meet the conditions.
+
+    Reads the message if the message starts with the "command_prefix"
+    (that was set in when initializing commands.Bot object) and the name
+    in the title of the method. Returns str in "ctx.send()".
+    """
+    not_roles = []
+    if " not " in role_names_str:
+        role_names = role_names_str.split(" not ")
+        role_names = [role.strip() for role in role_names if role]
+        not_role_names = [role for role in role_names[1:] if " not " not in role]
+        not_roles = [
+            discord.utils.get(ctx.guild.roles, name=not_role_name)
+            for not_role_name in not_role_names
+        ]
+        not_roles = [role for role in not_roles if role is not None]
+        role_names_str = role_names[0]
+    else:
+        not_roles = []
+
+    role_names = (
+        role_names_str.split(" and ")
+        if " and " in role_names_str
+        else role_names_str.split(" or ")
+    )
+    operator = "and" if " and " in role_names_str else "or"
+
+    roles = [
+        discord.utils.get(ctx.guild.roles, name=role_name) for role_name in role_names
+    ]
+    roles = [role for role in roles if role is not None]
+    if not roles:
+        await ctx.send(
+            f"Could not find any of the roles with names `{role_names_str}`."
+        )
+        return
+
+    members = set()
+    if operator == "and":
+        role_names = " and ".join(role.name for role in roles)
+        for role in roles:
+            if not members:
+                members.update(role.members)
+            else:
+                members &= set(role.members)
+    else:
+        role_names = " or ".join(role.name for role in roles)
+        for role in roles:
+            members.update(role.members)
+
+    for not_role in not_roles:
+        members -= set(not_role.members)
+
+    num_members = len(members)
+    not_role_names = ", ".join(not_role.name for not_role in not_roles)
+    if not_roles:
+        await ctx.send(
+            f"There are {num_members} members with the roles `{role_names}`"
+            f" but not the roles `{not_role_names}`."
+        )
+    else:
+        await ctx.send(
+            f"There are {num_members} members with {operator} the roles `{role_names}`."
+        )
+
+
+@bot.command()
+async def list_members(ctx, *, role_names_str: str):
+    """Reads the message from the chat and returns the list of the members
+    that meet the conditions.
+
+    Reads the message if the message starts with the "command_prefix"
+    (that was set in when initializing commands.Bot object) and the name
+    in the title of the method. Returns str in "ctx.send()".
+    """
+    not_roles = []
+    if " not " in role_names_str:
+        role_names = role_names_str.split(" not ")
+        role_names = [role.strip() for role in role_names if role]
+        not_role_names = [role for role in role_names[1:] if " not " not in role]
+        not_roles = [
+            discord.utils.get(ctx.guild.roles, name=not_role_name)
+            for not_role_name in not_role_names
+        ]
+        not_roles = [role for role in not_roles if role is not None]
+        role_names_str = role_names[0]
+    else:
+        not_roles = []
+
+    role_names = (
+        role_names_str.split(" and ")
+        if " and " in role_names_str
+        else role_names_str.split(" or ")
+    )
+    operator = "and" if " and " in role_names_str else "or"
+
+    roles = [
+        discord.utils.get(ctx.guild.roles, name=role_name) for role_name in role_names
+    ]
+    roles = [role for role in roles if role is not None]
+    if not roles:
+        await ctx.send(
+            f"Could not find any of the roles with names `{role_names_str}`."
+        )
+        return
+
+    members = set()
+    if operator == "and":
+        role_names = " and ".join(role.name for role in roles)
+        for role in roles:
+            if not members:
+                members.update(role.members)
+            else:
+                members &= set(role.members)
+    else:
+        role_names = " or ".join(role.name for role in roles)
+        for role in roles:
+            members.update(role.members)
+
+    for not_role in not_roles:
+        members -= set(not_role.members)
+
+    members = list(members)
+    member_names = ", ".join(member.mention for member in members)
+    not_role_names = ", ".join(not_role.name for not_role in not_roles)
+    if not_roles:
+        await ctx.send(
+            f"The members with the roles `{role_names}`"
+            f" but not the roles `{not_role_names}` are: {member_names}."
+        )
+    else:
+        await ctx.send(
+            f"The members with the roles `{role_names}` are: {member_names}."
+        )
+
+
+@bot.command()
 async def server(ctx):
     """Reads the message from the chat and returns
     embeded message with server stats.
@@ -60,11 +197,6 @@ async def server(ctx):
     - Footer message
     - Message anuthor and his icon.
     """
-    now = datetime.datetime.now()
-
-    google_credentials = gspread.service_account(filename="credentials.json")
-    spreadsheet = google_credentials.open("Python")
-    current_gsheet_a1_value = spreadsheet.sheet1.acell("A1").value
 
     embed_1 = discord.Embed(
         title=f"{ctx.guild.name} Info",
@@ -97,37 +229,8 @@ async def server(ctx):
     embed_1.set_thumbnail(url=ctx.guild.icon)
     embed_1.set_footer(text="⭐PLACEHOLDER⭐")
     embed_1.set_author(name=f"{ctx.author.name}", icon_url=ctx.message.author.avatar)
-    embed_1.add_field(
-        name="Description", value=f"""{current_gsheet_a1_value}""", inline=False
-    )
-    embed_1.add_field(
-        name="Last Updated:",
-        value=f"""This message auto-checks for changes every 15 seconds.
-    Last checked: {now.strftime('%Y-%m-%d, %H:%M:%S')}""",
-        inline=False,
-    )
-
-    update = await ctx.send(embed=embed_1)
-
-    @tasks.loop(seconds=15.0)
-    async def update_message():
-        now = datetime.datetime.now()
-        current_gsheet_a1_value = spreadsheet.sheet1.acell("A1").value
-        embed_1.set_field_at(
-            6, name="Description", value=f"{current_gsheet_a1_value}", inline=False
-        )
-        embed_1.set_field_at(
-            7,
-            name="Last Updated:",
-            value=f"""This message auto-checks for changes every 15 seconds.
-        Last checked: {now.strftime('%Y-%m-%d, %H:%M:%S')}""",
-            inline=False,
-        )
-        await update.edit(embed=embed_1)
-        now = []
-        current_gsheet_a1_value = []
-
-    update_message.start()
+    embed_1.add_field(name="Description", value="123", inline=False)
+    await ctx.send(embed=embed_1)
 
 
 bot.run(os.getenv("DISCORD_TOKEN"))
