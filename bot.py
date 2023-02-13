@@ -116,48 +116,72 @@ async def list_members(ctx, *, role_names_str: str):
     in the title of the method. Returns str in "ctx.send()".
     """
     not_roles = []
-    if " not " in role_names_str:
-        role_names = role_names_str.split(" not ")
-        role_names = [role.strip() for role in role_names if role]
-        not_role_names = [role for role in role_names[1:] if " not " not in role]
+    role_names = []
+    only_nots_in_str = False
+    print(role_names_str)
+    if "not " in role_names_str:
+        if role_names_str.startswith("not "):
+            role_names = role_names_str.replace(" ", "")
+            role_names = role_names.split("not")
+            print(f"role_names: {role_names}")
+            
+            print("1")
+            only_nots_in_str = True
+            not_role_names = [role for role in role_names[1:] if " not " not in role or "not " not in role]
+            print(not_role_names)
+        else:
+            role_names = role_names_str.split(" not ")
+            print("2")
+            only_nots_in_str = False
+            not_role_names = [role for role in role_names[1:] if " not " not in role]
+            print(not_role_names)
         not_roles = [
             discord.utils.get(ctx.guild.roles, name=not_role_name)
             for not_role_name in not_role_names
         ]
         not_roles = [role for role in not_roles if role is not None]
         role_names_str = role_names[0]
+        print(f"role_names_str: {role_names_str}")
     else:
         not_roles = []
-
-    role_names = (
-        role_names_str.split(" and ")
-        if " and " in role_names_str
-        else role_names_str.split(" or ")
-    )
-    operator = "and" if " and " in role_names_str else "or"
-
-    roles = [
-        discord.utils.get(ctx.guild.roles, name=role_name) for role_name in role_names
-    ]
-    roles = [role for role in roles if role is not None]
-    if not roles:
-        await ctx.send(
-            f"Could not find any of the roles with names `{role_names_str}`."
+    
+    if only_nots_in_str is False:
+        role_names = (
+            role_names_str.split(" and ")
+            if " and " in role_names_str
+            else role_names_str.split(" or ")
         )
-        return
+
+        roles = [
+            discord.utils.get(ctx.guild.roles, name=role_name) for role_name in role_names
+        ]
+        roles = [role for role in roles if role is not None]
+        if not roles:
+            await ctx.send(
+                f"Could not find any of the roles with names `{role_names_str}`."
+            )
+            return
 
     members = set()
-    if operator == "and":
+    if " and " in role_names_str:
+        operator = "and"
         role_names = " and ".join(role.name for role in roles)
         for role in roles:
-            if not members:
+            if not members:  # start if members is empty
+                members.update(role.members)
+            else:
+                members &= set(role.members)
+    elif " or " in role_names_str:
+        operator = "or"
+        role_names = " or ".join(role.name for role in roles)
+        for role in roles:
+            if not members:  # start if members is empty
                 members.update(role.members)
             else:
                 members &= set(role.members)
     else:
-        role_names = " or ".join(role.name for role in roles)
-        for role in roles:
-            members.update(role.members)
+        operator = None
+        members = set(ctx.guild.members)
 
     for not_role in not_roles:
         members -= set(not_role.members)
@@ -166,10 +190,15 @@ async def list_members(ctx, *, role_names_str: str):
     member_names = ", ".join(member.mention for member in members)
     not_role_names = ", ".join(not_role.name for not_role in not_roles)
     if not_roles:
-        await ctx.send(
-            f"The members with the roles `{role_names}`"
-            f" but not the roles `{not_role_names}` are: {member_names}."
-        )
+        if only_nots_in_str is True:
+            await ctx.send(
+                f"The members without roles {not_role_names} are: {member_names}."
+            )
+        else:
+            await ctx.send(
+                f"The members with the roles `{role_names}`"
+                f" but not the roles `{not_role_names}` are: {member_names}."
+            )
     else:
         await ctx.send(
             f"The members with the roles `{role_names}` are: {member_names}."
