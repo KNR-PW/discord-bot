@@ -8,7 +8,6 @@ import discord
 from discord.ext import commands
 from dotenv import load_dotenv
 
-
 load_dotenv()  # loads your local .env file with discord token
 
 intents = discord.Intents.default()
@@ -38,7 +37,7 @@ async def hello(ctx):
 
 
 @bot.command()
-async def count_members(ctx, *, role_names_str: str):
+async def count_members(ctx, *, output_string: str):
     """Reads the message from the chat and returns the number of members
     that meet the conditions.
 
@@ -47,9 +46,9 @@ async def count_members(ctx, *, role_names_str: str):
     in the title of the method. Returns str in "ctx.send()".
     """
     only_nots_in_str = False
-    if "not " in role_names_str:
-        if role_names_str.startswith("not "):
-            role_names = role_names_str.replace(" ", "")
+    if "not " in output_string:
+        if output_string.startswith("not "):
+            role_names = output_string.replace(" ", "")
             role_names = role_names.split("not")
             only_nots_in_str = True
             not_role_names = [
@@ -59,7 +58,7 @@ async def count_members(ctx, *, role_names_str: str):
             ]
         else:
             # two types of operations
-            role_names = role_names_str.split(" not ")
+            role_names = output_string.split(" not ")
             only_nots_in_str = False
             not_role_names = [role for role in role_names[1:] if " not " not in role]
         not_roles = []
@@ -73,15 +72,15 @@ async def count_members(ctx, *, role_names_str: str):
                 )
                 return
         not_roles = [role for role in not_roles if role is not None]
-        role_names_str = role_names[0]
+        output_string = role_names[0]
     else:
         not_roles = []
 
     if only_nots_in_str is False:
         role_names = (
-            role_names_str.split(" and ")
-            if " and " in role_names_str
-            else role_names_str.split(" or ")
+            output_string.split(" and ")
+            if " and " in output_string
+            else output_string.split(" or ")
         )
         roles = []
         for role_name in role_names:
@@ -97,14 +96,14 @@ async def count_members(ctx, *, role_names_str: str):
             return
 
     members = set()
-    if " and " in role_names_str:
+    if " and " in output_string:
         role_names = " and ".join(role.name for role in roles)
         for role in roles:
             if not members:  # start if members is empty
                 members.update(role.members)
             else:
                 members &= set(role.members)
-    elif " or " in role_names_str:
+    elif " or " in output_string:
         role_names = " or ".join(role.name for role in roles)
         for role in roles:
             if not members:  # start if members is empty
@@ -137,7 +136,7 @@ async def count_members(ctx, *, role_names_str: str):
 
 
 @bot.command()
-async def list_members(ctx, *, role_names_str: str):
+async def list_members(ctx, *, output_string: str):
     """Reads the message from the chat and returns the list of the members
     that meet the conditions.
 
@@ -146,9 +145,9 @@ async def list_members(ctx, *, role_names_str: str):
     in the title of the method. Returns str in "ctx.send()".
     """
     only_nots_in_str = False
-    if "not " in role_names_str:
-        if role_names_str.startswith("not "):
-            role_names = role_names_str.replace(" ", "")
+    if "not " in output_string:
+        if output_string.startswith("not "):
+            role_names = output_string.replace(" ", "")
             role_names = role_names.split("not")
             only_nots_in_str = True
             not_role_names = [
@@ -158,7 +157,7 @@ async def list_members(ctx, *, role_names_str: str):
             ]
         else:
             # two types of operations
-            role_names = role_names_str.split(" not ")
+            role_names = output_string.split(" not ")
             only_nots_in_str = False
             not_role_names = [role for role in role_names[1:] if " not " not in role]
         not_roles = []
@@ -172,15 +171,15 @@ async def list_members(ctx, *, role_names_str: str):
                 )
                 return
         not_roles = [role for role in not_roles if role is not None]
-        role_names_str = role_names[0]
+        output_string = role_names[0]
     else:
         not_roles = []
 
     if only_nots_in_str is False:
         role_names = (
-            role_names_str.split(" and ")
-            if " and " in role_names_str
-            else role_names_str.split(" or ")
+            output_string.split(" and ")
+            if " and " in output_string
+            else output_string.split(" or ")
         )
         roles = []
         for role_name in role_names:
@@ -196,14 +195,14 @@ async def list_members(ctx, *, role_names_str: str):
             return
 
     members = set()
-    if " and " in role_names_str:
+    if " and " in output_string:
         role_names = " and ".join(role.name for role in roles)
         for role in roles:
             if not members:  # start if members is empty
                 members.update(role.members)
             else:
                 members &= set(role.members)
-    elif " or " in role_names_str:
+    elif " or " in output_string:
         role_names = " or ".join(role.name for role in roles)
         for role in roles:
             if not members:  # start if members is empty
@@ -236,8 +235,118 @@ async def list_members(ctx, *, role_names_str: str):
         )
 
 
+def converting_string(input_string):
+    """Docstring placeholder"""
+    output_string = ""
+    start_index = 0
+    end_index = 0
+    while start_index < len(input_string):
+        start_index = input_string.find("{", end_index)
+        if start_index == -1:
+            output_string += input_string[end_index:]
+            break
+        output_string += input_string[end_index:start_index]
+        end_index = input_string.find("}", start_index)
+        if end_index == -1:
+            output_string += input_string[start_index:]
+            break
+        function_string = input_string[start_index + 1 : end_index]  # noqa: E203
+        if function_string.startswith("list_members "):
+            second_string = function_string[13:]
+            output_string += second_string
+        elif function_string.startswith("count_members "):
+            second_string = function_string[14:]
+            output_string += second_string
+        else:
+            output_string += "{" + function_string + "}"
+        end_index += 1
+    return output_string
+
+
 @bot.command()
-async def server(ctx):
+async def searching_for_roles(ctx, output_string):
+    """Docstring placeholder"""
+    only_nots_in_str = False
+    if "not " in output_string:
+        if output_string.startswith("not "):
+            role_names = output_string.replace(" ", "")
+            role_names = role_names.split("not")
+            only_nots_in_str = True
+            not_role_names = [
+                role
+                for role in role_names[1:]
+                if " not " not in role or "not " not in role
+            ]
+        else:
+            # two types of operations
+            role_names = output_string.split(" not ")
+            only_nots_in_str = False
+            not_role_names = [role for role in role_names[1:] if " not " not in role]
+        not_roles = []
+        for not_role_name in not_role_names:
+            not_role = discord.utils.get(ctx.guild.roles, name=not_role_name)
+            if not_role is not None:
+                not_roles.append(not_role)
+            else:
+                final_conversion = (
+                    f"Could not find `{not_role_name}` role. Check spelling."
+                )
+                return final_conversion
+        not_roles = [role for role in not_roles if role is not None]
+        output_string = role_names[0]
+    else:
+        not_roles = []
+
+    if only_nots_in_str is False:
+        role_names = (
+            output_string.split(" and ")
+            if " and " in output_string
+            else output_string.split(" or ")
+        )
+        roles = []
+        for role_name in role_names:
+            role = discord.utils.get(ctx.guild.roles, name=role_name)
+            if role is not None:
+                roles.append(role)
+            else:
+                final_conversion = f"Could not find `{role_name}` role. Check spelling."
+                return final_conversion
+        roles = [role for role in roles if role is not None]
+        if not roles:
+            final_conversion = "Could not find one or more roles. Check spelling."
+            return final_conversion
+
+    members = set()
+    if " and " in output_string:
+        role_names = " and ".join(role.name for role in roles)
+        for role in roles:
+            if not members:  # start if members is empty
+                members.update(role.members)
+            else:
+                members &= set(role.members)
+    elif " or " in output_string:
+        role_names = " or ".join(role.name for role in roles)
+        for role in roles:
+            if not members:  # start if members is empty
+                members.update(role.members)
+            else:
+                members &= set(role.members)
+    else:
+        role_names = role_names[0]
+        members = set(ctx.guild.members)
+
+    for not_role in not_roles:
+        members -= set(not_role.members)
+
+    members = list(members)
+    member_names = ", ".join(member.mention for member in members)
+    not_role_names = ", ".join(not_role.name for not_role in not_roles)
+    final_conversion = member_names
+    return final_conversion
+
+
+@bot.command()
+async def server(ctx, final_conversion):
     """Reads the message from the chat and returns
     embeded message with server stats.
 
@@ -257,6 +366,9 @@ async def server(ctx):
     - Footer message
     - Message anuthor and his icon.
     """
+    input_string = "hello {list_members admin and prezes}"
+    output_string = converting_string(input_string)
+    final_conversion = await searching_for_roles(ctx, output_string)
 
     embed_1 = discord.Embed(
         title=f"{ctx.guild.name} Info",
@@ -289,7 +401,7 @@ async def server(ctx):
     embed_1.set_thumbnail(url=ctx.guild.icon)
     embed_1.set_footer(text="⭐PLACEHOLDER⭐")
     embed_1.set_author(name=f"{ctx.author.name}", icon_url=ctx.message.author.avatar)
-    embed_1.add_field(name="Description", value="123", inline=False)
+    embed_1.add_field(name="Description", value=final_conversion, inline=False)
     await ctx.send(embed=embed_1)
 
 
