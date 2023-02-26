@@ -1,4 +1,4 @@
-# #!/usr/bin/env python3
+#!/usr/bin/env python3
 # *_* coding: utf-8 *_*
 """This module deploys discord bot using discord.py library."""
 
@@ -266,6 +266,13 @@ async def show_final_message_in_embed(ctx):
 """
 
 
+def finding_role(ctx, rolename):
+    """Docstring placeholder"""
+    discord_role = discord.utils.get(ctx.guild.roles, name=f"{rolename}")
+    discord_role = discord_role.mention
+    return discord_role
+
+
 def counting_members(ctx, second_string):
     """Docstring placeholder"""
     only_nots_in_str = False
@@ -453,6 +460,10 @@ def converting_string(ctx, input_string):
             second_string = function_string[14:]
             final_conversion = counting_members(ctx, second_string)
             output_string += final_conversion
+        elif function_string.startswith("role "):
+            second_string = function_string[5:]
+            final_conversion = finding_role(ctx, second_string)
+            output_string += final_conversion
         else:
             output_string += "{" + function_string + "}"
         end_index += 1
@@ -466,7 +477,8 @@ async def embed(ctx):
     Num of members with roles test and 2 but not 1:
     {count_members test and 2 not 1}
     These people are:
-    {list_members test and 2 not 1}"""
+    {list_members test and 2 not 1}
+    role: test = {role test}"""
     output_string = converting_string(ctx, input_string)
 
     simple_embed = discord.Embed()
