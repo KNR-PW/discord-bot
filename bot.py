@@ -264,6 +264,21 @@ async def show_final_message_in_embed(ctx):
     embed_new.add_field(name="Final message", value=f"{final_message}", inline=True)
     await ctx.send(embed=embed_new)
 """
+"""<Member id=306869504237895681 name='Uniqe' discriminator='4522' 
+    bot=False nick=None guild=<Guild id=738142745780027484 name='Warzone chłopaczki' 
+    shard_id=0 chunked=True member_count=14>>
+"""
+
+
+def finding_members(ctx, member_name):
+    start_index = member_name.find("#")
+    name = member_name[:start_index]
+    discriminator = member_name[start_index + 1 :]  # noqa: E203
+    discord_member = discord.utils.get(
+        ctx.guild.members, name=f"{name}", discriminator=f"{discriminator}"
+    )
+    discord_member = discord_member.mention
+    return discord_member
 
 
 def finding_role(ctx, rolename):
@@ -450,7 +465,6 @@ def converting_string(ctx, input_string):
         if end_index == -1:
             output_string += input_string[start_index:]
             break
-        print(f"output_String1: {output_string}")
         function_string = input_string[start_index + 1 : end_index]  # noqa: E203
         if function_string.startswith("list_members "):
             second_string = function_string[13:]
@@ -463,6 +477,10 @@ def converting_string(ctx, input_string):
         elif function_string.startswith("role "):
             second_string = function_string[5:]
             final_conversion = finding_role(ctx, second_string)
+            output_string += final_conversion
+        elif function_string.startswith("member "):
+            second_string = function_string[7:]
+            final_conversion = finding_members(ctx, second_string)
             output_string += final_conversion
         else:
             output_string += "{" + function_string + "}"
@@ -478,7 +496,10 @@ async def embed(ctx):
     {count_members test and 2 not 1}
     These people are:
     {list_members test and 2 not 1}
-    role: test = {role test}"""
+    role: test = {role test}
+    <@235088799074484224>
+    {member Uniqe#4522}
+    """
     output_string = converting_string(ctx, input_string)
 
     simple_embed = discord.Embed()
