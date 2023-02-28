@@ -55,9 +55,45 @@ def finding_role(ctx, rolename):
     return discord_role
 
 
-def counting_members(ctx, second_string):
+def searching_for_roles(ctx, separated_names_from_str, list_for_names):
+    """Docstring placeholder"""
+    for role_names in separated_names_from_str:
+        role = discord.utils.get(ctx.guild.roles, name=role_names)
+        if role is not None:
+            list_for_names.append(role)
+        else:
+            list_for_names.clear()
+            return list_for_names
+    return list_for_names
+
+
+def creating_set_of_roles(ctx, second_string, roles, not_roles, only_nots_in_str):
+    """Docstring placeholder"""
+    members = set()
+    if " and " in second_string:
+        for role in roles:
+            if not members:  # start if members is empty
+                members.update(role.members)
+            else:
+                members &= set(role.members)
+    elif " or " in second_string:
+        for role in roles:
+            members.update(role.members)
+    elif only_nots_in_str is False:  # only one positive role
+        role = roles[0]
+        members.update(role.members)
+    else:  # only negative roles
+        members = set(ctx.guild.members)
+
+    for not_role in not_roles:
+        members -= set(not_role.members)
+    return members
+
+
+def search_engine(ctx, second_string):
     """Docstring placeholder"""
     only_nots_in_str = False
+    roles = []
     if "not " in second_string:
         if second_string.startswith("not "):
             role_names = second_string.replace(" ", "")
@@ -74,16 +110,10 @@ def counting_members(ctx, second_string):
             only_nots_in_str = False
             not_role_names = [role for role in role_names[1:] if " not " not in role]
         not_roles = []
-        for not_role_name in not_role_names:
-            not_role = discord.utils.get(ctx.guild.roles, name=not_role_name)
-            if not_role is not None:
-                not_roles.append(not_role)
-            else:
-                final_conversion = (
-                    f"Could not find `{not_role_name}` role. Check spelling."
-                )
-                return final_conversion
-        not_roles = [role for role in not_roles if role is not None]
+        not_roles = searching_for_roles(ctx, not_role_names, not_roles)
+        if not not_roles:
+            final_conversion = "[None]"
+            return final_conversion
         second_string = role_names[0]
     else:
         not_roles = []
@@ -95,125 +125,84 @@ def counting_members(ctx, second_string):
             else second_string.split(" or ")
         )
         roles = []
-        for role_name in role_names:
-            role = discord.utils.get(ctx.guild.roles, name=role_name)
-            if role is not None:
-                roles.append(role)
-            else:
-                final_conversion = f"Could not find `{role_name}` role. Check spelling."
-                return final_conversion
-        roles = [role for role in roles if role is not None]
+        roles = searching_for_roles(ctx, role_names, roles)
         if not roles:
-            final_conversion = "Could not find one or more roles. Check spelling."
+            final_conversion = "[None]"
             return final_conversion
 
-    members = set()
-    if " and " in second_string:
-        role_names = " and ".join(role.name for role in roles)
-        for role in roles:
-            if not members:  # start if members is empty
-                members.update(role.members)
-            else:
-                members &= set(role.members)
-    elif " or " in second_string:
-        role_names = " or ".join(role.name for role in roles)
-        for role in roles:
-            members.update(role.members)
-    elif only_nots_in_str is False:  # only one positive role
-        role = roles[0]
-        members.update(role.members)
-        role_names = role.name
+    members = creating_set_of_roles(
+        ctx, second_string, roles, not_roles, only_nots_in_str
+    )
+    return members, final_conversion
+
+
+def abc(ctx, second_string):
+    """Docstring placeholder"""
+    only_nots_in_str = False
+    roles = []
+    if "not " in second_string:
+        if second_string.startswith("not "):
+            role_names = second_string.replace(" ", "")
+            role_names = role_names.split("not")
+            only_nots_in_str = True
+            not_role_names = [
+                role
+                for role in role_names[1:]
+                if " not " not in role or "not " not in role
+            ]
+        else:
+            # two types of operations
+            role_names = second_string.split(" not ")
+            only_nots_in_str = False
+            not_role_names = [role for role in role_names[1:] if " not " not in role]
+        not_roles = []
+        not_roles = searching_for_roles(ctx, not_role_names, not_roles)
+        if not not_roles:
+            final_conversion = "[None]"
+            return final_conversion
+        second_string = role_names[0]
     else:
-        role_names = role_names[0]
-        members = set(ctx.guild.members)
+        not_roles = []
 
-    for not_role in not_roles:
-        members -= set(not_role.members)
+    if only_nots_in_str is False:
+        role_names = (
+            second_string.split(" and ")
+            if " and " in second_string
+            else second_string.split(" or ")
+        )
+        roles = []
+        roles = searching_for_roles(ctx, role_names, roles)
+        if not roles:
+            final_conversion = "[None]"
+            return final_conversion
 
-    num_members = len(members)
-    final_conversion = str(num_members)
+    members = creating_set_of_roles(
+        ctx, second_string, roles, not_roles, only_nots_in_str
+    )
+
+    return members
+
+
+def counting_members(ctx, second_string):
+    """Docstring placeholder"""
+    members = abc(ctx, second_string)
+    if isinstance(members, str):
+        final_conversion = members
+    else:
+        num_members = len(members)
+        final_conversion = str(num_members)
     return final_conversion
 
 
 def listing_members(ctx, second_string):
     """Docstring placeholder"""
-    only_nots_in_str = False
-    if "not " in second_string:
-        if second_string.startswith("not "):
-            role_names = second_string.replace(" ", "")
-            role_names = role_names.split("not")
-            only_nots_in_str = True
-            not_role_names = [
-                role
-                for role in role_names[1:]
-                if " not " not in role or "not " not in role
-            ]
-        else:
-            # two types of operations
-            role_names = second_string.split(" not ")
-            only_nots_in_str = False
-            not_role_names = [role for role in role_names[1:] if " not " not in role]
-        not_roles = []
-        for not_role_name in not_role_names:
-            not_role = discord.utils.get(ctx.guild.roles, name=not_role_name)
-            if not_role is not None:
-                not_roles.append(not_role)
-            else:
-                final_conversion = (
-                    f"Could not find `{not_role_name}` role. Check spelling."
-                )
-                return final_conversion
-        not_roles = [role for role in not_roles if role is not None]
-        second_string = role_names[0]
+    members = abc(ctx, second_string)
+    if isinstance(members, str):
+        final_conversion = members
     else:
-        not_roles = []
-
-    if only_nots_in_str is False:
-        role_names = (
-            second_string.split(" and ")
-            if " and " in second_string
-            else second_string.split(" or ")
-        )
-        roles = []
-        for role_name in role_names:
-            role = discord.utils.get(ctx.guild.roles, name=role_name)
-            if role is not None:
-                roles.append(role)
-            else:
-                final_conversion = f"Could not find `{role_name}` role. Check spelling."
-                return final_conversion
-        roles = [role for role in roles if role is not None]
-        if not roles:
-            final_conversion = "Could not find one or more roles. Check spelling."
-            return final_conversion
-
-    members = set()
-    if " and " in second_string:
-        role_names = " and ".join(role.name for role in roles)
-        for role in roles:
-            if not members:  # start if members is empty
-                members.update(role.members)
-            else:
-                members &= set(role.members)
-    elif " or " in second_string:
-        role_names = " or ".join(role.name for role in roles)
-        for role in roles:
-            members.update(role.members)
-    elif only_nots_in_str is False:  # only one positive role
-        role = roles[0]
-        members.update(role.members)
-        role_names = role.name
-    else:
-        role_names = role_names[0]
-        members = set(ctx.guild.members)
-
-    for not_role in not_roles:
-        members -= set(not_role.members)
-
-    members = list(members)
-    member_names = ", ".join(member.mention for member in members)
-    not_role_names = ", ".join(not_role.name for not_role in not_roles)
-    final_conversion = member_names
+        members = list(members)
+        member_names = ", ".join(member.mention for member in members)
+        final_conversion = member_names
     return final_conversion
 
 
@@ -259,13 +248,7 @@ def converting_string(ctx, input_string):
 async def embed(ctx):
     """Docstring placeholder"""
     input_string = """
-    Num of members with roles test and 2 but not 1:
-    {count_members test and 2 not 1}
-    These people are:
-    {list_members test and 2 not 1}
-    role: test = {role test}
-    <@235088799074484224>
-    {member Uniqe#4522}
+    {list_members 2 or test or 1}
     """
     output_string = converting_string(ctx, input_string)
 
