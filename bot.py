@@ -10,15 +10,14 @@ from dotenv import load_dotenv
 
 load_dotenv()  # loads your local .env file with the discord token
 
-intents = discord.Intents.default()
-intents.message_content = True  # pylint: disable=assigning-non-slot
-intents.members = True  # pylint: disable=assigning-non-slot
+
+intents = discord.Intents(guilds=True, members=True, messages=True)
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 
 @bot.event
-async def on_ready():
+async def on_ready() -> None:
     """Sends notification message when connected to the server."""
     print(f"\nLogged in as {bot.user} (ID: {bot.user.id})")
     print(f"Logging time {time.strftime('%X')}")
@@ -32,11 +31,17 @@ async def hello(ctx):
     Reads the message if the message starts with the "command_prefix"
     that was set when initializing commands.Bot object and ends with
     the name in the title of the method. Returns str in "ctx.send()".
+    Args:
+        ctx (discord.ext.commands.context.Context): necessary parameter when
+        accesing discord server data; used by discord.ext.commands.
+    Returns:
+        discord.message.Message
     """
+
     await ctx.send("hi")
 
 
-def finding_single_member(ctx, member_name):
+def finding_single_member(ctx, member_name: str) -> str:
     """Takes the string and returns the corresponding member from the discord server.
 
     Each name on the discord server looks like this: name#XXXX,
@@ -57,11 +62,14 @@ def finding_single_member(ctx, member_name):
     discord_member = discord.utils.get(
         ctx.guild.members, name=f"{name}", discriminator=f"{discriminator}"
     )
-    discord_member = discord_member.mention
+    if discord_member is not None:
+        discord_member = discord_member.mention
+    else:
+        discord_member = "[None]"
     return discord_member
 
 
-def finding_single_role(ctx, rolename):
+def finding_single_role(ctx, rolename: str) -> str:
     """Takes the string and returns the corresponding role from the discord server.
 
     Args:
@@ -72,11 +80,16 @@ def finding_single_role(ctx, rolename):
         str: A string with the mentioned role name from the discord server.
     """
     discord_role = discord.utils.get(ctx.guild.roles, name=f"{rolename}")
-    discord_role = discord_role.mention
+    if discord_role is not None:
+        discord_role = discord_role.mention
+    else:
+        discord_role = "[None]"
     return discord_role
 
 
-def searching_for_roles(ctx, separated_names_from_str, list_for_names):
+def searching_for_roles(
+    ctx, separated_names_from_str: list, list_for_names: list
+) -> list:
     """Take the list of names and return the list of discord roles.
 
     Each name in the list of names is checked for occurrence in the discord server.
@@ -92,8 +105,8 @@ def searching_for_roles(ctx, separated_names_from_str, list_for_names):
     Returns:
         list : A list of discord roles or an empty list.
     """
-    for role_names in separated_names_from_str:
-        role = discord.utils.get(ctx.guild.roles, name=role_names)
+    for role_name in separated_names_from_str:
+        role = discord.utils.get(ctx.guild.roles, name=role_name)
         if role is not None:
             list_for_names.append(role)
         else:
@@ -102,7 +115,13 @@ def searching_for_roles(ctx, separated_names_from_str, list_for_names):
     return list_for_names
 
 
-def creating_set_of_roles(ctx, message_core_str, roles, not_roles, only_nots_in_str):
+def creating_set_of_roles(
+    ctx,
+    message_core_str: str,
+    roles: list,
+    not_roles: list,
+    only_nots_in_str: bool,
+) -> set:
     """Gets a list of roles and, based on met criteria,
     passes matching members into a set.
 
@@ -124,7 +143,7 @@ def creating_set_of_roles(ctx, message_core_str, roles, not_roles, only_nots_in_
     Returns:
         set: A set of discord server members.
     """
-    members = set()
+    members: set = set()
     if " and " in message_core_str:
         for role in roles:
             if not members:  # start if members is empty
@@ -145,7 +164,7 @@ def creating_set_of_roles(ctx, message_core_str, roles, not_roles, only_nots_in_
     return members
 
 
-def role_searching_core(ctx, message_core_str):
+def role_searching_core(ctx, message_core_str: str) -> set | str:
     """Analyzes the message, breaks it down into smaller fragments,
     and creates a list of roles.
 
@@ -162,41 +181,44 @@ def role_searching_core(ctx, message_core_str):
         message_core_str (str): A string that may contain roles and logical operators
     Returns:
         set: A set of discord server members.
+        str: A string containing final parsed message.
     """
     only_nots_in_str = False
-    roles = []
+    roles: list = []
     if "not " in message_core_str:
         if message_core_str.startswith("not "):
-            role_names = message_core_str.replace(" ", "")
-            role_names = role_names.split("not")
+            role_names_str = message_core_str.replace(" ", "")
+            role_names_list = role_names_str.split("not")
             only_nots_in_str = True
-            not_role_names = [
+            not_role_names_list = [
                 role
-                for role in role_names[1:]
+                for role in role_names_list[1:]
                 if " not " not in role or "not " not in role
             ]
         else:
             # two types of operations
-            role_names = message_core_str.split(" not ")
+            role_names_list = message_core_str.split(" not ")
             only_nots_in_str = False
-            not_role_names = [role for role in role_names[1:] if " not " not in role]
-        not_roles = []
-        not_roles = searching_for_roles(ctx, not_role_names, not_roles)
+            not_role_names_list = [
+                role for role in role_names_list[1:] if " not " not in role
+            ]
+        not_roles: list = []
+        not_roles = searching_for_roles(ctx, not_role_names_list, not_roles)
         if not not_roles:
             final_converted_str = "[None]"
             return final_converted_str
-        message_core_str = role_names[0]
+        message_core_str = role_names_list[0]
     else:
         not_roles = []
 
     if only_nots_in_str is False:
-        role_names = (
+        role_names_list = (
             message_core_str.split(" and ")
             if " and " in message_core_str
             else message_core_str.split(" or ")
         )
         roles = []
-        roles = searching_for_roles(ctx, role_names, roles)
+        roles = searching_for_roles(ctx, role_names_list, roles)
         if not roles:
             final_converted_str = "[None]"
             return final_converted_str
@@ -207,7 +229,7 @@ def role_searching_core(ctx, message_core_str):
     return members
 
 
-def counting_members(ctx, message_core_str):
+def counting_members(ctx, message_core_str: str) -> str:
     """Gets a string. Returns either a string with a number of members or a message.
 
     Calls a subfunction. Checks whether the returned variable is a string or a list.
@@ -221,17 +243,17 @@ def counting_members(ctx, message_core_str):
     Returns:
         str: A string containing final parsed message.
     """
-    members_list_or_message_str = role_searching_core(ctx, message_core_str)
-    if isinstance(members_list_or_message_str, str):
-        final_converted_str = members_list_or_message_str
+    members_set_or_message_str = role_searching_core(ctx, message_core_str)
+    if isinstance(members_set_or_message_str, str):
+        final_converted_str = members_set_or_message_str
     else:
-        members = members_list_or_message_str
+        members = members_set_or_message_str
         num_members = len(members)
         final_converted_str = str(num_members)
     return final_converted_str
 
 
-def listing_members(ctx, message_core_str):
+def listing_members(ctx, message_core_str: str) -> str:
     """Gets a string. Returns either a string with members names or a message.
 
     Calls a subfunction. Checks whether the returned variable is a string or a list.
@@ -245,18 +267,18 @@ def listing_members(ctx, message_core_str):
     Returns:
         str: A string containing final parsed message.
     """
-    members_list_or_message_str = role_searching_core(ctx, message_core_str)
-    if isinstance(members_list_or_message_str, str):
-        final_converted_str = members_list_or_message_str
+    members_set_or_message_str = role_searching_core(ctx, message_core_str)
+    if isinstance(members_set_or_message_str, str):
+        final_converted_str = members_set_or_message_str
     else:
-        members = members_list_or_message_str
-        members = list(members)
-        member_names = ", ".join(member.mention for member in members)
+        members_set = members_set_or_message_str
+        members_list = list(members_set)
+        member_names = ", ".join(member.mention for member in members_list)
         final_converted_str = member_names
     return final_converted_str
 
 
-def converting_string(ctx, input_string):
+def converting_string(ctx, input_string: str) -> str:
     """Searches for the functional field in a string and based on the condition,
     passes it to the other functions.
 
@@ -326,7 +348,7 @@ async def embed(ctx):
         discord.embeds.Embed: A discord.embeds.Embed object with the parsed message.
     """
     input_string = """
-    {list_members test}
+    {list_members test and 2 not 1}
     """
     output_string = converting_string(ctx, input_string)
 
