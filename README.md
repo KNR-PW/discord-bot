@@ -9,17 +9,17 @@
 ![GitHub](https://img.shields.io/github/license/KNR-PW/discord-bot)
 
 &nbsp;
+
 <div align="center">
 
 The aim of this project is to create a personalized bot to help with server management on discord, using the `discord.py` library. At the moment the project is in the development phase. Ultimately, the bot is supposed to place provided messages on the text channel, collect data from the server and save it to the google sheet.
 
 [Getting started](#getting-started) •
 [Discord Commands](#discord-commands) •
-[License](#license) 
+[License](#license)
 
 </div>
 &nbsp;
-
 
 ## Getting started
 
@@ -33,13 +33,13 @@ The aim of this project is to create a personalized bot to help with server mana
    pip install -r requirements.txt
    ```
 
-3. If you decide to run your bot from a personal computer, with only you having access to the code, you can replace `DISCORD_TOKEN`variable inside the quote in the `bot.py` with your token acquired when creating the bot: 
+3. If you decide to run your bot from a personal computer, with only you having access to the code, you can replace `DISCORD_TOKEN`variable inside the quote in the `bot.py` with your token acquired when creating the bot:
 
    ```python
    client.run(os.getenv("DISCORD_TOKEN"))
    ```
 
-    Otherwise, it is advised to store your token in a separate file. For this create `.env` file inside the same folder as the `bot.py` file. Inside put following line:
+   Otherwise, it is advised to store your token in a separate file. For this create `.env` file inside the same folder as the `bot.py` file. Inside put following line:
 
    ```python
    DISCORD_TOKEN="Your token goes here"
@@ -62,16 +62,50 @@ The aim of this project is to create a personalized bot to help with server mana
 ## Discord commands
 
 ---
-This is a list of currently supported commands in the text chat:
 
-```text
-!hello - Simple "Hello!" reply in return
-!hello Bot - Reply with mentioning to user message
-```
+The bot can convert relevant commands in text into valuable information. The whole message should be typed inside `""`, and commands are recognized inside curly brackets `{}`. Each command should be written in a separate function block. Currently, the possible commands recognized in the text:
+
+- `{list_members [...]}` - Returns a list of members who meet the required conditions imposed. In addition to roles, the text can include the logical operators `and`/`or` and `not`. The `and` operator reads the role directly before and after itself and checks the logical condition, which members belong to both roles. Similarly, the `or` operator works - checks all members who match one or both roles. The `not` operator reads the role after itself and returns all members who do not have the assigned role.
+  The real power of the list_members command comes from the fact that the operators in the function block can be duplicated and combined to form a complex function for searching server data. For example, by typing `{list_members a and b and c not d not e}`, you should get every person who has both role a and b, but no role c, d and e.
+
+  > **Important**: You cannot use both `and` and `or` operators in the same sentence, but you can use any of them with the `not` command.
+  >
+  > **Important**: If you want to use both the `not` operator and any of the other operators in the same command, you must use all operators that are not `not` in the first place. Example: `{count_members not A and B and C}` is incorrect and will return `[None]`.
+
+- `{count_members [...]}` - Works like `list_members`, but instead of returning names, it returns a number.
+
+- `{member [...]}` - Used to search for a single member from a server. You have to provide a user name from a server in the format "name#XXXX" in place of `[...]`, where "XXXX" is a 4-digit number. In response, the function will return a formatted name that looks like: **@Name**. In addition, if a user has a special nickname set for this server, it will be shown instead of his default name.
+
+- `{role [...]}` - Searches for a specific role in a server. Returns a formatted role name that looks like: **@Role**. You have to provide a role name in place of `[...]`.
+
+In case of an incorrect argument name in the text, a missing argument, or an argument that does not exist in the Discord server database, the bot will return `[None]`.
+
+Examples:
+
+> There are currently {count_members xyz} members one the server with the role {role Moderator}.
+>
+> These members are: {list_members Moderator}.
+>
+> The {role President} of a club is {member John#1234}.
+>
+> Incorrect command examples: {list_members }, {count_members president}, {member Name#1234567}
+
+Result:
+
+> There are currently 3 members one the server with the role **@Moderator**.
+>
+> These members are: **@A**, **@B**, **@C**.
+>
+> The **@President** of a club is **@John**.
+>
+> Incorrect command examples: [None], [None], [None]
+
+In the incorrect commands' examples above: 1. Empty argument, 2. case sensitive argument (starts with lower "p"), 3. Too long user name number.
 
 ## License
 
 ---
+
 Copyright © 2022 KNR
 
 This project is [MIT](https://choosealicense.com/licenses/mit/) licenced.
