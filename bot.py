@@ -272,8 +272,10 @@ def listing_members(ctx, message_core_str: str) -> str:
         final_converted_str = members_set_or_message_str
     else:
         members_set = members_set_or_message_str
-        members_list = list(members_set)
-        member_names = ", ".join(member.mention for member in members_list)
+        members_list = []
+        for member in members_set:
+            members_list.append(member.mention)
+        member_names = ", ".join(member for member in members_list)
         final_converted_str = member_names
     return final_converted_str
 
