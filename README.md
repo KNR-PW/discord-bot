@@ -16,6 +16,7 @@ The aim of this project is to create a personalized bot to help with server mana
 
 [Getting started](#getting-started) •
 [Discord Commands](#discord-commands) •
+[Message Syntax](#message-syntax) •
 [License](#license)
 
 </div>
@@ -60,6 +61,18 @@ The aim of this project is to create a personalized bot to help with server mana
    ```
 
 ## Discord commands
+
+---
+
+!help - shows bot usage instruction **[Function not Ready Yet]**
+
+!hello - Reads the message from the chat. Returns a greeting.
+
+!embed - Reads the message from the chat and returns, along with the converted [commands](#message-syntax), the message previously constructed within the function.
+
+!server - Reads the message from the chat and returns embedded message with server stats
+
+## Message Syntax
 
 ---
 
