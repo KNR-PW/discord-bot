@@ -87,6 +87,51 @@ def finding_single_role(ctx, rolename: str) -> str:
     return discord_role
 
 
+def finding_single_text_channel(ctx, channel_name: str) -> str:
+    """Takes the string and returns the corresponding text channel from the
+    discord server.
+
+    Args:
+        ctx (discord.ext.commands.context.Context): necessary parameter when
+        accesing discord server data; used by discord.ext.commands.
+        channel_name (str): A string representing a text channel name
+        to be searched for.
+    Returns:
+        str: A string with the text channel from the discord server.
+    """
+    discord_channel = discord.utils.get(ctx.guild.text_channels, name=f"{channel_name}")
+    if discord_channel is not None:
+        print(type(discord_channel))
+        return f"<#{discord_channel.id}>"
+    else:
+        return "[None]"
+
+
+def finding_single_voice_channel(ctx, channel_name: str) -> str:
+    """Takes the string and returns the corresponding voice channel from the
+    discord server.
+
+    Args:
+        ctx (discord.ext.commands.context.Context): necessary parameter when
+        accesing discord server data; used by discord.ext.commands.
+        channel_name (str): A string representing a voice channel name
+        to be searched for.
+    Returns:
+        str: A string with the voice channel from the discord server.
+    """
+    discord_channel = discord.utils.get(
+        ctx.guild.voice_channels, name=f"{channel_name}"
+    )
+    if discord_channel is not None:
+        print(type(discord_channel))
+        return f"<#{discord_channel.id}>"
+    else:
+        return "[None]"
+
+
+# channel = discord.utils.get(ctx.guild.channels, name=given_name)
+
+
 def searching_for_roles(
     ctx, separated_names_from_str: list, list_for_names: list
 ) -> list:
@@ -329,6 +374,14 @@ def converting_string(ctx, input_string: str) -> str:
             message_core_str = function_string[7:]
             final_converted_str = finding_single_member(ctx, message_core_str)
             output_string += final_converted_str
+        elif function_string.startswith("text_channel "):
+            message_core_str = function_string[13:]
+            final_converted_str = finding_single_text_channel(ctx, message_core_str)
+            output_string += final_converted_str
+        elif function_string.startswith("voice_channel "):
+            message_core_str = function_string[14:]
+            final_converted_str = finding_single_voice_channel(ctx, message_core_str)
+            output_string += final_converted_str
         else:
             output_string += "{" + function_string + "}"
         end_index += 1
@@ -350,7 +403,8 @@ async def embed(ctx):
         discord.embeds.Embed: A discord.embeds.Embed object with the parsed message.
     """
     input_string = """
-    {list_members test and 2 not 1}
+    {text_channel ogólny}
+    {voice_channel ogólny}
     """
     output_string = converting_string(ctx, input_string)
 
