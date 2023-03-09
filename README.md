@@ -12,7 +12,7 @@
 
 <div align="center">
 
-The aim of this project is to create a personalized bot to help with server management on discord, using the `discord.py` library. At the moment the project is in the development phase. Ultimately, the bot is supposed to place provided messages on the text channel, collect data from the server and save it to the google sheet.
+   This project aims to create a personalized bot to help with server management on discord, using the `discord.py` library. At the moment the project is in the development phase. Ultimately, the bot is supposed to aid with writing complex text messages on the channel that contain relevant server data.
 
 [Getting started](#getting-started) •
 [Discord Commands](#discord-commands) •
@@ -76,7 +76,7 @@ The aim of this project is to create a personalized bot to help with server mana
 
 ---
 
-The bot can convert relevant commands in text into valuable information. The whole message should be typed inside `""`, and commands are recognized inside curly brackets `{}`. Each command should be written in a separate function block. Currently, the possible commands recognized in the text:
+The bot can convert relevant commands in text into valuable information. The whole message should be typed inside `""`, and commands are recognized inside curly brackets `{}`. Each command should be written in a separate function block. For every command listed below must provide a suitable argument or arguments in place of `[...]`. Currently, the possible commands recognized in the text:
 
 - `{list_members [...]}` - Returns a list of members who meet the required conditions imposed. In addition to roles, the text can include the logical operators `and`/`or` and `not`. The `and` operator reads the role directly before and after itself and checks the logical condition, which members belong to both roles. Similarly, the `or` operator works - checks all members who match one or both roles. The `not` operator reads the role after itself and returns all members who do not have the assigned role.
   The real power of the list_members command comes from the fact that the operators in the function block can be duplicated and combined to form a complex function for searching server data. For example, by typing `{list_members a and b and c not d not e}`, you should get every person who has both role a and b, but no role c, d and e.
@@ -89,9 +89,13 @@ The bot can convert relevant commands in text into valuable information. The who
 
 - `{member [...]}` - Used to search for a single member from a server. You have to provide a user name from a server in the format "name#XXXX" in place of `[...]`, where "XXXX" is a 4-digit number. In response, the function will return a formatted name that looks like: **@Name**. In addition, if a user has a special nickname set for this server, it will be shown instead of his default name.
 
-- `{role [...]}` - Searches for a specific role in a server. Returns a formatted role name that looks like: **@Role**. You have to provide a role name in place of `[...]`.
+- `{role [...]}` - Searches for a specific role in the server. Returns a formatted role name that looks like **@Role**. You have to provide a role name in the place of `[...]`.
 
-In case of an incorrect argument name in the text, a missing argument, or an argument that does not exist in the Discord server database, the bot will return `[None]`.
+- `{text_channel [...]}` - Searches for a specific text channel in the server. Returns a formatted text channel name that looks like **#TextChannel**.
+
+- `{voice_channel [...]}` - Searches for a specific voice channel in the server. Returns a formatted voice channel name that looks like **@VoiceChannel**.
+
+> **In case of an incorrect argument name in the text, a missing argument, or an argument that does not exist in the Discord server database, the bot will return `[None]`**.
 
 Examples:
 
