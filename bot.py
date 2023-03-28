@@ -5,23 +5,532 @@
 import time
 import os
 import discord
+from discord import app_commands
 from discord.ext import commands
 from dotenv import load_dotenv
 
 load_dotenv()  # loads your local .env file with the discord token
 
 
-intents = discord.Intents(guilds=True, members=True, messages=True)
+class Bot(commands.Bot):
+    """A subclass of the `commands.Bot` class."""
 
-bot = commands.Bot(command_prefix="!", intents=intents)
+    def __init__(self):
+        intents = discord.Intents.default()
+        intents.guilds = True
+        intents.members = True
+        intents.messages = True
+        intents.message_content = True
+        super().__init__(command_prefix="!", intents=intents)
+
+    # async def setup_hook(self):
+
+    async def on_ready(self):
+        """Sends notification message when connected to the server."""
+        print(f"\nLogged in as {self.user} (ID: {self.user.id})")
+        print(f"Logging time {time.strftime('%X')}")
+        print("-----------------------------------")
+        try:
+            synced = await self.tree.sync(
+                guild=discord.Object(id=os.getenv("GUILD_ID"))
+            )
+            print(f"Synced {len(synced)} slash commands for {self.user}.")
+        except Exception as e:
+            print(e)
+
+    async def on_command_error(self, ctx, error):
+        await ctx.reply(error, ephemeral=True)
 
 
-@bot.event
-async def on_ready() -> None:
-    """Sends notification message when connected to the server."""
-    print(f"\nLogged in as {bot.user} (ID: {bot.user.id})")
-    print(f"Logging time {time.strftime('%X')}")
-    print("-----------------------------------")
+bot = Bot()
+
+
+class EmbedEditingMethods:
+    """
+    A class to be inherited by `EditSelectMenu` class. Stores methods for creating
+    the main embed modifying survey and for editing embed itself.
+
+    Args:
+        new_embed (`discord.Embed`): An object from the `Discord.Embed` class that
+        will be used as the main embed.
+        ctx (`discord.ext.commands.Context`): necessary parameter when accesing
+        some discord server data. Used by internal methods.
+    """
+
+    def __init__(self, new_embed: discord.Embed, ctx: commands.Context):
+        self.embed = new_embed
+        self.ctx = ctx
+
+    def get_default_embed(self):
+        """Sets embed back to default state"""
+        self.embed.title = "Title"
+        self.embed.description = "description"
+        self.embed.set_thumbnail(url="https://knr.edu.pl/images/KNR_log.png")
+        self.embed.clear_fields()
+        if bool(self.embed.author):
+            self.embed.remove_author()
+        if bool(self.embed.footer):
+            self.embed.remove_footer()
+        if bool(self.embed.image):
+            self.embed.set_image(url=None)
+
+    async def edit_author(self, interaction: discord.Interaction):
+        """Edits the embed's author (name, icon_url, url)."""
+        embed_survey = EmbedSurvey(title="Edit Embed Author")
+        embed_survey.add_item(
+            discord.ui.TextInput(
+                label="Author Name",
+                max_length=100,
+                default=self.embed.author.name,
+                placeholder="Author name to display in the embed",
+                required=False,
+            )
+        )
+        embed_survey.add_item(
+            discord.ui.TextInput(
+                label="Author Icon Url",
+                default=self.embed.author.icon_url,
+                placeholder="Author icon to display in the embed",
+                required=False,
+            )
+        )
+        embed_survey.add_item(
+            discord.ui.TextInput(
+                label="Author Url",
+                default=self.embed.author.url,
+                placeholder="URL to set as the embed's author link",
+                required=False,
+            )
+        )
+        await interaction.response.send_modal(embed_survey)
+        await embed_survey.wait()
+        try:
+            self.embed.set_author(
+                name=str(embed_survey.children[0]),
+                icon_url=str(embed_survey.children[1]),
+                url=str(embed_survey.children[2]),
+            )
+            return self.embed
+        except discord.HTTPException:
+            self.embed.set_author(name=str(embed_survey.children[0]))
+
+    async def edit_message(self, interaction: discord.Interaction) -> None:
+        """Edits the embed's title and description."""
+        embed_survey = EmbedSurvey(title="Edit Embed Message")
+        embed_survey.add_item(
+            discord.ui.TextInput(
+                label="Embed Title",
+                max_length=255,
+                default=self.embed.title,
+                placeholder="Title to display in the embed",
+                required=False,
+            )
+        )
+        embed_survey.add_item(
+            discord.ui.TextInput(
+                label="Embed Description",
+                default=self.embed.description,
+                placeholder="Description to display in the embed",
+                style=discord.TextStyle.paragraph,
+                required=False,
+                max_length=4000,
+            )
+        )
+        await interaction.response.send_modal(embed_survey)
+        await embed_survey.wait()
+        output_string = converting_string(self.ctx, str(embed_survey.children[1]))
+        self.embed.title, self.embed.description = (
+            str(embed_survey.children[0]),
+            output_string,
+        )
+
+    async def edit_thumbnail(self, interaction: discord.Interaction) -> None:
+        """Edits the embed's thumbnail."""
+        embed_survey = EmbedSurvey(title="Edit Embed Thumbnail")
+        embed_survey.add_item(
+            discord.ui.TextInput(
+                label="Thumbnail Url",
+                default=self.embed.thumbnail.url,
+                placeholder="Thumbnail you want to display in the embed",
+                required=False,
+            )
+        )
+        await interaction.response.send_modal(embed_survey)
+        await embed_survey.wait()
+        self.embed.set_thumbnail(url=str(embed_survey.children[0]))
+
+    async def edit_image(self, interaction: discord.Interaction) -> None:
+        """Edits the embed's image."""
+        embed_survey = EmbedSurvey(title="Edit Embed Thumbnail")
+        embed_survey.add_item(
+            discord.ui.TextInput(
+                label="Image Url",
+                default=self.embed.image.url,
+                placeholder="Image you want to display in the embed",
+                required=False,
+            )
+        )
+        await interaction.response.send_modal(embed_survey)
+        await embed_survey.wait()
+        self.embed.set_image(url=str(embed_survey.children[0]))
+
+    async def edit_footer(self, interaction: discord.Interaction) -> None:
+        """Edits the embed's footer (text, icon_url)."""
+        embed_survey = EmbedSurvey(title="Edit Embed Footer")
+        embed_survey.add_item(
+            discord.ui.TextInput(
+                label="Footer Text",
+                max_length=255,
+                required=False,
+                default=self.embed.footer.text,
+                placeholder="Text you want to display on embed footer",
+            )
+        )
+        embed_survey.add_item(
+            discord.ui.TextInput(
+                label="Footer Icon",
+                required=False,
+                default=self.embed.footer.icon_url,
+                placeholder="Icon you want to display on embed footer",
+            )
+        )
+        await interaction.response.send_modal(embed_survey)
+        await embed_survey.wait()
+        self.embed.set_footer(
+            text=str(embed_survey.children[0]), icon_url=str(embed_survey.children[1])
+        )
+
+    async def edit_color(self, interaction: discord.Interaction) -> None:
+        """Edits the embed's color"""
+        embed_survey = EmbedSurvey(title="Edit Embed Colour")
+        embed_survey.add_item(
+            discord.ui.TextInput(
+                label="Embed Color",
+                placeholder="The color you want to display on embed (e.g: #303236)",
+                max_length=20,
+            )
+        )
+        await interaction.response.send_modal(embed_survey)
+        await embed_survey.wait()
+        try:
+            color = discord.Colour.from_str(str(embed_survey.children[0]))
+        except:
+            await interaction.followup.send(
+                "Please provide a valid hex code.", ephemeral=True
+            )
+        else:
+            self.embed.color = color
+
+    async def add_field(self, interaction: discord.Interaction) -> None:
+        """Adds a message field to the embed."""
+        if len(self.embed.fields) >= 25:
+            return await interaction.response.send_message(
+                "You can not add more than 25 fields.", ephemeral=True
+            )
+        embed_survey = EmbedSurvey(title="Add a new field")
+        embed_survey.add_item(
+            discord.ui.TextInput(
+                label="Field Name",
+                placeholder="The name you want to display on the field",
+                max_length=255,
+            )
+        )
+        embed_survey.add_item(
+            discord.ui.TextInput(
+                label="Field Message",
+                max_length=1023,
+                style=discord.TextStyle.paragraph,
+            )
+        )
+        embed_survey.add_item(
+            discord.ui.TextInput(
+                label="Field in the same line? (True/False)",
+                default="True",
+                max_length=5,
+                placeholder="The inline for the field either True or False",
+            )
+        )
+        await interaction.response.send_modal(embed_survey)
+        await embed_survey.wait()
+        output_string = converting_string(self.ctx, str(embed_survey.children[1]))
+        try:
+            inline = False
+            if str(embed_survey.children[2]).lower() == "true":
+                inline = True
+            elif str(embed_survey.children[2]).lower() == "false":
+                inline = False
+            else:
+                raise Exception("Bad Bool Input.")
+        except:
+            await interaction.followup.send(
+                "Please provide a valid input in `inline` either True Or False.",
+                ephemeral=True,
+            )
+        else:
+            self.embed.add_field(
+                name=str(embed_survey.children[0]), value=output_string, inline=inline
+            )
+
+
+class ChannelSelectMenu(discord.ui.View):
+    """
+    Subclass of the `discord.ui.View` class. Used for creating a channel select menu.
+
+    Args:
+        placeholder (str): The placeholder text that will be displayed
+        in the channel select menu.
+        ephemeral (bool, optional): A boolean indicating whether the
+        channel select menu will be sent as an ephemeral message or not.
+        Default is False.
+        max_values (int, optional): The maximum number of options that can be
+        selected by the user. Default is 1.
+    """
+
+    def __init__(
+        self, placeholder: str, ephemeral: bool = False, max_values: int = 1
+    ) -> None:
+        super().__init__()
+        self.values = None
+        self.ephemeral = ephemeral
+        self.children[0].placeholder, self.children[0].max_values = (  # type: ignore
+            placeholder,
+            max_values,
+        )
+
+    @discord.ui.select(
+        cls=discord.ui.ChannelSelect,
+        channel_types=[
+            discord.ChannelType.text,
+            discord.ChannelType.private_thread,
+            discord.ChannelType.public_thread,
+            discord.ChannelType.news,
+        ],
+    )
+    async def callback(
+        self, interaction: discord.Interaction, select: discord.ui.ChannelSelect
+    ):
+        """Docstring"""
+        await interaction.response.defer(ephemeral=self.ephemeral)
+        if self.ephemeral:
+            await interaction.delete_original_response()
+        else:
+            await interaction.message.delete()  # type: ignore
+        self.values = [interaction.guild.get_channel(i.id) for i in select.values]
+        self.stop()
+
+
+class EmbedSurvey(discord.ui.Modal):
+    """
+    Subclass of the `discord.ui.Modal` class.
+    Used for creating modals that require user input.
+
+    Args:
+        title (str): The title of the modal.
+    """
+
+    def __init__(self, title: str):
+        self.title = title
+        super().__init__()
+
+    async def on_submit(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
+        self.stop()
+
+
+class EditSelectMenu(discord.ui.Select):
+    """
+    Subclass of the `discord.ui.Select` class.
+    Used for creating a select menu to edit embed.
+
+    Args:
+        new_embed (`discord.Embed`): An object from the `Discord.Embed` class that
+        will be used as the main embed.
+        ctx (`discord.ext.commands.Context`): necessary parameter when accesing
+        some discord server data. Used by internal methods.
+    """
+
+    def __init__(self, new_embed, ctx: commands.Context):
+        self.embed = new_embed
+        self.ctx = ctx
+
+        options = [
+            discord.SelectOption(
+                label="Title and Message",
+                description="Set a title and description for the embed",
+            ),
+            discord.SelectOption(
+                label="Add Field", description="Add a field to the embed"
+            ),
+            discord.SelectOption(
+                label="Author", description="Set a author for the embed"
+            ),
+            discord.SelectOption(
+                label="Thumbnail", description="Set a thumbnail for the embed"
+            ),
+            discord.SelectOption(
+                label="Image", description="Set an image for the embed"
+            ),
+            discord.SelectOption(
+                label="Footer", description="Set a footer for the embed"
+            ),
+            discord.SelectOption(
+                label="Color", description="Set a color for the embed"
+            ),
+        ]
+        super().__init__(
+            placeholder="Expand the list to edit the embed's...",
+            options=options,
+            min_values=1,
+            max_values=1,
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        selected_option = self.values[0]
+
+        creator_methods = EmbedEditingMethods(self.embed, self.ctx)
+        if selected_option == "Title":
+            pass
+        elif selected_option == "Title and Message":
+            await creator_methods.edit_message(interaction)
+        elif selected_option == "Add Field":
+            await creator_methods.add_field(interaction)
+        elif selected_option == "Author":
+            await creator_methods.edit_author(interaction)
+        elif selected_option == "Thumbnail":
+            await creator_methods.edit_thumbnail(interaction)
+        elif selected_option == "Image":
+            await creator_methods.edit_image(interaction)
+        elif selected_option == "Footer":
+            await creator_methods.edit_footer(interaction)
+        elif selected_option == "Color":
+            await creator_methods.edit_color(interaction)
+        await self.update_embed(interaction)
+
+    async def update_embed(self, interaction: discord.Interaction):
+        """Updates embed."""
+        await interaction.edit_original_response(embed=self.embed)
+
+
+class SendButton(discord.ui.Button):
+    """
+    Subclass of the `discord.ui.Button` class.
+    Used for creating a clickable button for deploying embed.
+
+    Args:
+        new_embed (`discord.Embed`): An object from the `Discord.Embed` class that
+        will be used as the main embed.
+        ctx (`discord.ext.commands.Context`): necessary parameter when accesing
+        some discord server data. Used by internal methods.
+    """
+
+    def __init__(self, new_embed: discord.Embed, ctx: commands.Context):
+        self.embed = new_embed
+        self.ctx = ctx
+        super().__init__(label="Send Embed", style=discord.ButtonStyle.green)
+
+    async def callback(self, interaction: discord.Interaction):
+        channel_select_menu = ChannelSelectMenu(
+            "Select a channel to send this embed...", True, 1
+        )
+        await interaction.response.send_message(
+            view=channel_select_menu, ephemeral=True
+        )
+        await channel_select_menu.wait()
+        if channel_select_menu.values:
+            if not isinstance(
+                channel_select_menu.values[0],
+                (discord.StageChannel, discord.ForumChannel, discord.CategoryChannel),
+            ):
+                await channel_select_menu.values[0].send(embed=self.embed)
+                await interaction.message.delete()  # type: ignore
+
+
+class ResetButton(discord.ui.Button):
+    """
+    Subclass of the `discord.ui.Button` class.
+    Used for creating a clickable button for returning embed to the default state.
+
+    Args:
+        new_embed (`discord.Embed`): An object from the `Discord.Embed` class that
+        will be used as the main embed.
+        ctx (`discord.ext.commands.Context`): necessary parameter when accesing
+        some discord server data. Used by internal methods.
+    """
+
+    def __init__(self, new_embed: discord.Embed, ctx: commands.Context):
+        self.embed = new_embed
+        self.ctx = ctx
+        super().__init__(label="Reset Embed", style=discord.ButtonStyle.blurple)
+
+    async def callback(self, interaction: discord.Interaction):
+        creator_methods = EmbedEditingMethods(self.embed, self.ctx)
+        creator_methods.get_default_embed()
+        await interaction.response.edit_message(embed=self.embed)
+
+
+class CancelButton(discord.ui.Button):
+    """
+    Subclass of the `discord.ui.Button` class.
+    Used for creating a clickable button to cancel Embed Creator.
+
+    Args:
+        new_embed (`discord.Embed`): An object from the `Discord.Embed` class that
+        will be used as the main embed.
+        ctx (`discord.ext.commands.Context`): necessary parameter when accesing
+        some discord server data. Used by internal methods.
+    """
+
+    def __init__(self, new_embed: discord.Embed, ctx: commands.Context):
+        self.embed = new_embed
+        self.ctx = ctx
+        super().__init__(label="Cancel Embed", style=discord.ButtonStyle.red)
+
+    async def callback(self, interaction: discord.Interaction):
+        await interaction.message.delete()  # type: ignore
+
+
+class EmbedCreator(discord.ui.View):
+    """
+    Subclass of the `discord.ui.View` class.
+    It is intended to be used as a base class for creating a panel that allows users
+    to create embeds in a specified Discord TextChannel.
+
+    Args:
+        new_embed (`discord.Embed`): An object from the `Discord.Embed` class that
+        will be used as the main embed.
+        ctx (`discord.ext.commands.Context`): necessary parameter when accesing
+        some discord server data. Used by internal methods.
+    """
+
+    def __init__(self, new_embed: discord.Embed, ctx: commands.Context):
+        self.embed = new_embed
+        self.ctx = ctx
+        super().__init__()
+        self.add_item(EditSelectMenu(self.embed, self.ctx))
+        self.add_item(SendButton(self.embed, self.ctx))
+        self.add_item(ResetButton(self.embed, self.ctx))
+        self.add_item(CancelButton(self.embed, self.ctx))
+
+
+@bot.hybrid_command(
+    name="embed_creator",
+    with_app_command=True,
+    description="Create your own embed with Embed Creator",
+)
+@app_commands.guilds(discord.Object(id=os.getenv("GUILD_ID")))
+@commands.has_permissions(administrator=True)
+async def embed_creator(ctx: commands.Context):
+    """Creates embed and initializes EmbedCreator o object.
+
+    Args:
+        ctx (`discord.ext.commands.Context`): necessary parameter when accesing
+        some discord server data. Used by internal methods.
+
+    """
+    new_embed = discord.Embed(title="Title", description="description")
+    new_embed.set_thumbnail(url="https://knr.edu.pl/images/KNR_log.png")
+    view = EmbedCreator(new_embed, ctx)
+    await ctx.send(content="**Preview of the embed:**", view=view, embed=new_embed)
 
 
 @bot.command()
@@ -32,8 +541,9 @@ async def hello(ctx):
     that was set when initializing commands.Bot object and ends with
     the name in the title of the method. Returns str in "ctx.send()".
     Args:
-        ctx (discord.ext.commands.context.Context): necessary parameter when
-        accesing discord server data; used by discord.ext.commands.
+        ctx (`discord.ext.commands.Context`): necessary parameter when accesing
+        some discord server data.
+        Used by internal methods.
     Returns:
         discord.message.Message
     """
@@ -43,18 +553,19 @@ async def hello(ctx):
 
 def finding_single_member(ctx, member_name: str) -> str:
     """Takes the string and returns the corresponding member from the discord server.
+    `
+        Each name on the discord server looks like this: name#XXXX,
+        where "XXXX" is any 4-digit number. The function reads the entire string,
+        finds where the # symbol is, treats it as a dividing line to create
+        two new strings, which are used to look up the formatted member's name
+        from the server's database.
 
-    Each name on the discord server looks like this: name#XXXX,
-    where "XXXX" is any 4-digit number. The function reads the entire string,
-    finds where the # symbol is, treats it as a dividing line to create two new strings,
-    which are used to look up the formatted member's name from the server's database.
-
-    Args:
-        ctx (discord.ext.commands.context.Context): necessary parameter when
-        accesing discord server data; used by discord.ext.commands.
-        member_name (str): A string representing a member to be searched for.
-    Returns:
-        str: A string with the mentioned role name from the discord server.
+        Args:
+            ctx (discord.ext.commands.context.Context): necessary parameter when
+            accesing discord server data; used by discord.ext.commands.
+            member_name (str): A string representing a member to be searched for.
+        Returns:
+            str: A string with the mentioned role name from the discord server.
     """
     start_index = member_name.find("#")
     name = member_name[:start_index]
@@ -127,9 +638,6 @@ def finding_single_voice_channel(ctx, channel_name: str) -> str:
         return f"<#{discord_channel.id}>"
     else:
         return "[None]"
-
-
-# channel = discord.utils.get(ctx.guild.channels, name=given_name)
 
 
 def searching_for_roles(
@@ -389,7 +897,7 @@ def converting_string(ctx, input_string: str) -> str:
 
 
 @bot.command()
-async def embed(ctx):
+async def embed1(ctx):
     """Produces a discord embed from a modified string created in itself.
 
     Takes a string from within itself. Passes it into a parsing function.
