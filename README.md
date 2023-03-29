@@ -4,18 +4,22 @@
 
 # Discord Bot
 
+
+<div align="center">
+
+<a href>
+    <img src="discord_bot_logo.png" title="Discord Bot icon" style="margin-left: 100px;" align="middle" height="150" />
+</a>
+
+This project aims to create a personalized bot to help with server management on discord, using the `discord.py` library. At the moment the project is in the development phase. Ultimately, the bot is supposed to aid with writing complex text messages on the channel that contain relevant server data.
+
 ![GitHub issues](https://img.shields.io/github/issues-raw/KNR-PW/discord-bot)
 ![GitHub last commit](https://img.shields.io/github/last-commit/KNR-PW/discord-bot)
 ![GitHub](https://img.shields.io/github/license/KNR-PW/discord-bot)
 
-&nbsp;
-
-<div align="center">
-
-   This project aims to create a personalized bot to help with server management on discord, using the `discord.py` library. At the moment the project is in the development phase. Ultimately, the bot is supposed to aid with writing complex text messages on the channel that contain relevant server data.
-
 [Getting started](#getting-started) •
 [Discord Commands](#discord-commands) •
+[Embed Creator Example](#embed-creator-example) •
 [Message Syntax](#message-syntax) •
 [License](#license)
 
@@ -34,16 +38,19 @@
    pip install -r requirements.txt
    ```
 
-3. If you decide to run your bot from a personal computer, with only you having access to the code, you can replace `DISCORD_TOKEN`variable inside the quote in the `bot.py` with your token acquired when creating the bot:
+3. If you decide to run your bot from a personal computer, with only you having access to the code, you can replace `DISCORD_TOKEN` , as well as `GUILD_ID` variable instances inside the quotes in the `bot.py` with your token acquired when creating the bot and server ID numer:
 
    ```python
    client.run(os.getenv("DISCORD_TOKEN"))
+
+   discord.Object(id=os.getenv("GUILD_ID"))
    ```
 
-   Otherwise, it is advised to store your token in a separate file. For this create `.env` file inside the same folder as the `bot.py` file. Inside put following line:
+   Otherwise, it is advised to store your token and ID number in a separate file. For this create `.env` file inside the same folder as the `bot.py` file. You should store both values like so:
 
    ```python
    DISCORD_TOKEN="Your token goes here"
+   GUILD_ID="The ID number of your server goes here"
    ```
 
    If you want to place this bot on your github account, before doing so you should create an empty `.gitignore` file, where you should write:
@@ -64,13 +71,25 @@
 
 ---
 
-!help - shows bot usage instruction **[Function not Ready Yet]**
+_!help_ - shows bot usage instruction **[Function not Ready Yet]**
 
-!hello - Reads the message from the chat. Returns a greeting.
+_!hello_ - Reads the message from the chat. Returns a greeting.
 
-!embed - Reads the message from the chat and returns, along with the converted [commands](#message-syntax), the message previously constructed within the function.
+_!embed1_ - Reads the message from the chat and returns, along with the converted [commands](#message-syntax), the message previously constructed within the function.
 
-!server - Reads the message from the chat and returns embedded message with server stats
+_!server_ - Reads the message from the chat and returns embedded message with server stats
+
+_!embed_creator_ - Creates Embed Creator - A tool for dynamic embed building. It allows you to change various parameters of the embed live and then choose the channel on which the embed will be published.
+
+_/embed_creator_ - Same as !embed_creator but using discord built-in slash commands' auto-complete name hinter. When changing description of the embed, or text value inside added text field, you can use supported [commands](#message-syntax).
+
+## Embed Creator Example
+
+---
+
+<center>
+<img src="EmbedCreator_example_1.gif" alt="Embed Creator Example" width="90%">
+</center>
 
 ## Message Syntax
 
