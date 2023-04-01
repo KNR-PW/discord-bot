@@ -43,6 +43,7 @@ class Bot(commands.Bot):
 
 
 bot = Bot()
+bot.remove_command("help")
 
 
 class EmbedEditingMethods:
@@ -388,9 +389,7 @@ class EditSelectMenu(discord.ui.Select):
         selected_option = self.values[0]
 
         creator_methods = EmbedEditingMethods(self.embed, self.ctx)
-        if selected_option == "Title":
-            pass
-        elif selected_option == "Title and Message":
+        if selected_option == "Title and Message":
             await creator_methods.edit_message(interaction)
         elif selected_option == "Add Field":
             await creator_methods.add_field(interaction)
@@ -489,6 +488,118 @@ class CancelButton(discord.ui.Button):
         await interaction.message.delete()  # type: ignore
 
 
+class HelpSelect(discord.ui.Select):
+    """
+    Subclass of the `discord.ui.Select` class.
+    Used for creating a select menu to read embeds.
+
+    Args:
+        help_embed (`discord.Embed`): An object from the `Discord.Embed` class that
+        will be used as the main embed.
+    """
+
+    def __init__(self, help_embed: discord.Embed):
+        self.help_embed = help_embed
+        self.flag: bool = False
+
+        options = [
+            discord.SelectOption(
+                label="Commands",
+                description="Possible discord commands",
+            ),
+            discord.SelectOption(
+                label="Message Syntax",
+                description="How to get more from the text",
+            ),
+        ]
+        super().__init__(
+            options=options, max_values=1, placeholder="Learn more about the bot..."
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        selected_option = self.values[0]
+
+        if selected_option == "Commands":
+            content = """
+            \n
+            :small_orange_diamond:`!help | /help` - Info about the bot.
+
+            :small_orange_diamond:`!hello` - Greets user.
+
+            :small_orange_diamond:`!embed1` - Text converted with the message syntax.
+
+            :small_orange_diamond:`!server` - Embedded message with the server stats.
+
+            :small_orange_diamond:`!embed_creator | /embed_creator` - Embed Creator
+            (A tool for dynamic embed building).
+            
+            *For more in-depth information go to:
+            https://github.com/KNR-PW/discord-bot*
+            """
+            self.help_embed.add_field(name="Discord Commands", value=content)
+
+        else:
+            syntax1 = """
+            \n
+            The bot can convert relevant commands in text into valuable information when you invoke `/embed_creator` or `!embed_creator` discord commands and try to edit either embed description or add and edit a text field.
+            When typing the message, commands are recognized inside curly brackets `{}`.
+            
+            :small_orange_diamond:`{list_members [...]}` - Returns a list of members who have required roles. In addition to roles, the text can include the logical operators `and`/`or` and `not`.
+            """
+
+            syntax2 = """
+            :small_orange_diamond:`{count_members [...]}` - Works like list_members, but instead of returning names, it returns a number.
+
+            :small_orange_diamond:`{member [...]}` - Returns **@Name**.
+
+            :small_orange_diamond:`{role [...]}` - Returns a single **@Role**.
+
+            :small_orange_diamond:`{text_channel [...]}` - Returns **#TextChannel**.
+
+            :small_orange_diamond:`{voice_channel [...]}` - Returns **@VoiceChannel**.
+
+            **In case of an incorrect argument name in the text, a missing argument, or an argument that does not exist, the bot will return `[None]`**.
+            
+            *For more in-depth information go to:
+            https://github.com/KNR-PW/discord-bot*
+
+            """
+            self.help_embed.add_field(name="Message Syntax", value=syntax1)
+            self.help_embed.add_field(name="** **", value=syntax2, inline=False)
+        if self.flag is False:
+            self.flag = True  # First time choosing option
+        else:
+            if len(self.help_embed.fields) == 2:
+                self.help_embed.remove_field(index=0)  # Clicking Twice Commands
+            elif len(self.help_embed.fields) == 3:
+                if self.help_embed.fields[0].name == "Message Syntax":
+                    self.help_embed.remove_field(index=0)
+                    self.help_embed.remove_field(index=0)
+                else:
+                    self.help_embed.remove_field(index=0)
+            else:  # Clicking Twice Message Syntax
+                self.help_embed.remove_field(index=0)
+                self.help_embed.remove_field(index=0)
+        await interaction.response.edit_message(embed=self.help_embed)
+
+
+class HelpMenu(discord.ui.View):
+    """
+    Subclass of the `discord.ui.View` class.
+    It is intended to be used as a base class for creating a panel that allows users
+    to read more about the KNR Bot.
+    """
+
+    def __init__(self, timeout=60.0):
+        self.help_embed = discord.Embed()
+        super().__init__(timeout=timeout)
+        self.add_item(HelpSelect(self.help_embed))
+
+    async def on_timeout(self):
+        print("test")
+        self.clear_items()
+
+
 class EmbedCreator(discord.ui.View):
     """
     Subclass of the `discord.ui.View` class.
@@ -520,7 +631,7 @@ class EmbedCreator(discord.ui.View):
 @app_commands.guilds(discord.Object(id=os.getenv("GUILD_ID")))
 @commands.has_permissions(administrator=True)
 async def embed_creator(ctx: commands.Context):
-    """Creates embed and initializes EmbedCreator o object.
+    """Creates embed and initializes EmbedCreator object.
 
     Args:
         ctx (`discord.ext.commands.Context`): necessary parameter when accesing
@@ -531,6 +642,25 @@ async def embed_creator(ctx: commands.Context):
     new_embed.set_thumbnail(url="https://knr.edu.pl/images/KNR_log.png")
     view = EmbedCreator(new_embed, ctx)
     await ctx.send(content="**Preview of the embed:**", view=view, embed=new_embed)
+
+
+@bot.hybrid_command(
+    name="help",
+    with_app_command=True,
+    description="Read how to use this bot.",
+)
+@app_commands.guilds(discord.Object(id=os.getenv("GUILD_ID")))
+@commands.has_permissions(administrator=True)
+async def bot_help(ctx: commands.Context):
+    """Shows the user useful information about the bot.
+
+    Args:
+        ctx (`discord.ext.commands.Context`): necessary parameter when accesing
+        some discord server data. Used by internal methods.
+
+    """
+    view = HelpMenu()
+    await ctx.send(view=view)
 
 
 @bot.command()

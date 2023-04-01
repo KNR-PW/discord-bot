@@ -4,12 +4,11 @@
 
 # Discord Bot
 
-
 <div align="center">
 
-<a href>
-    <img src="discord_bot_logo.png" title="Discord Bot icon" style="margin-left: 100px;" align="middle" height="150" />
-</a>
+<p align="center">
+    <img src="discord_bot_logo.png" title="Discord Bot icon" height="150">
+</p>
 
 This project aims to create a personalized bot to help with server management on discord, using the `discord.py` library. At the moment the project is in the development phase. Ultimately, the bot is supposed to aid with writing complex text messages on the channel that contain relevant server data.
 
@@ -70,12 +69,13 @@ This project aims to create a personalized bot to help with server management on
 ## Discord commands
 
 ---
+<p align="center">
+<img src="help_command_example.gif" alt="Help Command Example" width="40%">
+</p>
 
 _!help_ - shows bot usage instruction **[Function not Ready Yet]**
 
 _!hello_ - Reads the message from the chat. Returns a greeting.
-
-_!embed1_ - Reads the message from the chat and returns, along with the converted [commands](#message-syntax), the message previously constructed within the function.
 
 _!server_ - Reads the message from the chat and returns embedded message with server stats
 
@@ -87,17 +87,17 @@ _/embed_creator_ - Same as !embed_creator but using discord built-in slash comma
 
 ---
 
-<center>
+<p align="center">
 <img src="EmbedCreator_example_1.gif" alt="Embed Creator Example" width="90%">
-</center>
+</p>
 
 ## Message Syntax
 
 ---
 
-The bot can convert relevant commands in text into valuable information. The whole message should be typed inside `""`, and commands are recognized inside curly brackets `{}`. Each command should be written in a separate function block. For every command listed below must provide a suitable argument or arguments in place of `[...]`. Currently, the possible commands recognized in the text:
+The bot can convert relevant commands in text into valuable information when you invoke `/embed_creator` or `!embed_creator` discord commands and try to edit either embed description or add and edit a text field. When typieng the message, commands are recognized inside curly brackets `{}`. Each command should be written in a separate function block. For every command listed below must provide a suitable argument or arguments in place of `[...]`. Currently, the possible commands recognized in the text:
 
-- `{list_members [...]}` - Returns a list of members who meet the required conditions imposed. In addition to roles, the text can include the logical operators `and`/`or` and `not`. The `and` operator reads the role directly before and after itself and checks the logical condition, which members belong to both roles. Similarly, the `or` operator works - checks all members who match one or both roles. The `not` operator reads the role after itself and returns all members who do not have the assigned role.
+- `{list_members [...]}` - Returns a list of members who have required roles. In addition to roles, the text can include the logical operators `and`/`or` and `not`. The `and` operator reads the role directly before and after itself and checks the logical condition, which members belong to both roles. Similarly, the `or` operator works - checks all members who match one or both roles. The `not` operator reads the role after itself and returns all members who do not have the assigned role.
   The real power of the list_members command comes from the fact that the operators in the function block can be duplicated and combined to form a complex function for searching server data. For example, by typing `{list_members a and b and c not d not e}`, you should get every person who has both role a and b, but no role c, d and e.
 
   > **Important**: You cannot use both `and` and `or` operators in the same sentence, but you can use any of them with the `not` command.
