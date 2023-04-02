@@ -995,7 +995,8 @@ def converting_string(ctx, input_string: str) -> str:
         if end_index == -1:
             output_string += input_string[start_index:]
             break
-        function_string = input_string[start_index + 1 : end_index]  # noqa: E203
+        edited_string = input_string[start_index + 1 : end_index]  # noqa: E203
+        function_string = edited_string.strip()
         if function_string.startswith("list_members "):
             message_core_str = function_string[13:]
             final_converted_str = listing_members(ctx, message_core_str)
