@@ -5,8 +5,11 @@
 import time
 import os
 import discord
+from typing import List
+from contextlib import suppress
 from discord import app_commands
 from discord.ext import commands
+from contextlib import suppress
 from dotenv import load_dotenv
 
 load_dotenv()  # loads your local .env file with the discord token
@@ -222,6 +225,32 @@ class EmbedEditingMethods:
         else:
             self.embed.color = color
 
+    async def remove_field(self, interaction: discord.Interaction) -> None:
+        """Removes a message field from the embed."""
+        if not self.embed.fields:
+            return await interaction.response.send_message(
+                "There is no fields to remove.", ephemeral=True
+            )
+        field_options = list()
+        for index, field in enumerate(self.embed.fields):
+            field_options.append(
+                discord.SelectOption(
+                    label=str(field.name)[0:30], value=str(index), emoji="\U0001f5d1"
+                )
+            )
+        select = SelectPrompt(
+            placeholder="Select a field to remove...",
+            options=field_options,
+            max_values=len(field_options),
+            ephemeral=True,
+        )
+        await interaction.response.send_message(view=select, ephemeral=True)
+        await select.wait()
+
+        if vals := select.values:
+            for value in vals:
+                self.embed.remove_field(int(value))
+
     async def add_field(self, interaction: discord.Interaction) -> None:
         """Adds a message field to the embed."""
         if len(self.embed.fields) >= 25:
@@ -251,6 +280,7 @@ class EmbedEditingMethods:
                 placeholder="The inline for the field either True or False",
             )
         )
+
         await interaction.response.send_modal(embed_survey)
         await embed_survey.wait()
         output_string = converting_string(self.ctx, str(embed_survey.children[1]))
@@ -271,6 +301,44 @@ class EmbedEditingMethods:
             self.embed.add_field(
                 name=str(embed_survey.children[0]), value=output_string, inline=inline
             )
+
+
+class SelectPrompt(discord.ui.View):
+    """
+    Subclass of the `discord.ui.View` class. Used for creating a select prompt.
+
+    Args:
+        placeholder (str): The placeholder text that will be displayed
+        in the channel select menu.
+        options (List[SelectOption]): A list of `SelectOption` instances that will be displayed as options in the select prompt.
+        max_values (int, optional): The maximum number of options that can be selected by the user. Default is 1.
+        ephemeral (bool, optional): A boolean indicating whether the select prompt will be sent as an ephemeral message or not. Default is False.
+    """
+
+    def __init__(
+        self,
+        placeholder: str,
+        options: List[discord.SelectOption],
+        max_values: int = 1,
+        ephemeral: bool = False,
+    ) -> None:
+        super().__init__()
+        self.children[0].placeholder, self.children[0].max_values, self.children[0].options = placeholder, max_values, options  # type: ignore
+        self.values = None
+        self.ephemeral = ephemeral
+
+    @discord.ui.select()
+    async def select_callback(
+        self, interaction: discord.Interaction, select: discord.ui.Select
+    ):
+        await interaction.response.defer(ephemeral=self.ephemeral)
+        if self.ephemeral:
+            await interaction.delete_original_response()
+        else:
+            with suppress(Exception):
+                await interaction.message.delete()  # type: ignore
+        self.values = select.values
+        self.stop()
 
 
 class ChannelSelectMenu(discord.ui.View):
@@ -363,6 +431,9 @@ class EditSelectMenu(discord.ui.Select):
                 label="Add Field", description="Add a field to the embed"
             ),
             discord.SelectOption(
+                label="Remove Field", description="Remove a field from the embed"
+            ),
+            discord.SelectOption(
                 label="Author", description="Set a author for the embed"
             ),
             discord.SelectOption(
@@ -393,6 +464,9 @@ class EditSelectMenu(discord.ui.Select):
             await creator_methods.edit_message(interaction)
         elif selected_option == "Add Field":
             await creator_methods.add_field(interaction)
+        elif selected_option == "Remove Field":
+            await creator_methods.remove_field(interaction)
+            await interaction.message.edit(embed=self.embed)
         elif selected_option == "Author":
             await creator_methods.edit_author(interaction)
         elif selected_option == "Thumbnail":
@@ -403,7 +477,8 @@ class EditSelectMenu(discord.ui.Select):
             await creator_methods.edit_footer(interaction)
         elif selected_option == "Color":
             await creator_methods.edit_color(interaction)
-        await self.update_embed(interaction)
+        if selected_option != "Remove Field":
+            await self.update_embed(interaction)
 
     async def update_embed(self, interaction: discord.Interaction):
         """Updates embed."""
