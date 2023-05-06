@@ -14,6 +14,9 @@ from dotenv import load_dotenv
 
 load_dotenv()  # loads your local .env file with the discord token
 
+embed_channel_id = ""
+embed_message_id = ""
+
 
 class Bot(commands.Bot):
     """A subclass of the `commands.Bot` class."""
@@ -515,8 +518,37 @@ class SendButton(discord.ui.Button):
                 channel_select_menu.values[0],
                 (discord.StageChannel, discord.ForumChannel, discord.CategoryChannel),
             ):
-                await channel_select_menu.values[0].send(embed=self.embed)
+                global embed_channel_id
+                global embed_message_id
+                embed_message = await channel_select_menu.values[0].send(
+                    embed=self.embed
+                )
+                embed_message_id = embed_message.id
+                embed_channel_id = channel_select_menu.values[0].id
                 await interaction.message.delete()  # type: ignore
+
+
+class UpdateButton(discord.ui.Button):
+    """
+    Subclass of the `discord.ui.Button` class.
+    Used for creating a clickable button for updating embed.
+
+    Args:
+        last_embed (`discord.Embed`): An object from the `Discord.Embed` class that
+        will be used as the main embed.
+        ctx (`discord.ext.commands.Context`): necessary parameter when accesing
+        some discord server data. Used by internal methods.
+    """
+
+    def __init__(self, last_embed: discord.Embed, ctx: commands.Context, last_message):
+        self.embed = last_embed
+        self.ctx = ctx
+        self.last_message = last_message
+        super().__init__(label="Update Embed", style=discord.ButtonStyle.green)
+
+    async def callback(self, interaction: discord.Interaction):
+        await self.last_message.edit(embed=self.embed)
+        await interaction.message.delete()  # type: ignore
 
 
 class ResetButton(discord.ui.Button):
@@ -671,7 +703,6 @@ class HelpMenu(discord.ui.View):
         self.add_item(HelpSelect(self.help_embed))
 
     async def on_timeout(self):
-        print("test")
         self.clear_items()
 
 
@@ -686,14 +717,26 @@ class EmbedCreator(discord.ui.View):
         will be used as the main embed.
         ctx (`discord.ext.commands.Context`): necessary parameter when accesing
         some discord server data. Used by internal methods.
+        TODO Remaining ARGS
     """
 
-    def __init__(self, new_embed: discord.Embed, ctx: commands.Context):
+    def __init__(
+        self,
+        new_embed: discord.Embed,
+        ctx: commands.Context,
+        last_message=None,
+        update_flag=False,
+    ):
         self.embed = new_embed
         self.ctx = ctx
+        self.last_message = last_message if last_message is not None else None
+        self.update_flag = update_flag if update_flag is not False else False
         super().__init__()
         self.add_item(EditSelectMenu(self.embed, self.ctx))
-        self.add_item(SendButton(self.embed, self.ctx))
+        if update_flag is False:
+            self.add_item(SendButton(self.embed, self.ctx))
+        else:
+            self.add_item(UpdateButton(self.embed, self.ctx, self.last_message))
         self.add_item(ResetButton(self.embed, self.ctx))
         self.add_item(CancelButton(self.embed, self.ctx))
 
@@ -717,6 +760,26 @@ async def embed_creator(ctx: commands.Context):
     new_embed.set_thumbnail(url="https://knr.edu.pl/images/KNR_log.png")
     view = EmbedCreator(new_embed, ctx)
     await ctx.send(content="**Preview of the embed:**", view=view, embed=new_embed)
+
+
+@bot.hybrid_command(
+    name="embed_update",
+    with_app_command=True,
+    description="Edit previously deployed embed",
+)
+@app_commands.guilds(discord.Object(id=os.getenv("GUILD_ID")))
+@commands.has_permissions(administrator=True)
+async def embed_update(ctx: commands.Context):
+    try:
+        channel = bot.get_channel(embed_channel_id)
+        last_message = await channel.fetch_message(embed_message_id)
+        last_embed = last_message.embeds[0]
+        update_flag = True
+        view = EmbedCreator(last_embed, ctx, last_message, update_flag)
+        await ctx.send(content="**Preview of the embed:**", view=view, embed=last_embed)
+    except AttributeError:
+        await ctx.send("Could not find last embed.")
+        
 
 
 @bot.hybrid_command(
@@ -817,7 +880,6 @@ def finding_single_text_channel(ctx, channel_name: str) -> str:
     """
     discord_channel = discord.utils.get(ctx.guild.text_channels, name=f"{channel_name}")
     if discord_channel is not None:
-        print(type(discord_channel))
         return f"<#{discord_channel.id}>"
     else:
         return "[None]"
@@ -839,7 +901,6 @@ def finding_single_voice_channel(ctx, channel_name: str) -> str:
         ctx.guild.voice_channels, name=f"{channel_name}"
     )
     if discord_channel is not None:
-        print(type(discord_channel))
         return f"<#{discord_channel.id}>"
     else:
         return "[None]"
