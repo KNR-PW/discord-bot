@@ -4,18 +4,19 @@
 
 import time
 import os
-import discord
 from typing import List
 from contextlib import suppress
+import discord
 from discord import app_commands
 from discord.ext import commands
-from contextlib import suppress
 from dotenv import load_dotenv
 
 load_dotenv()  # loads your local .env file with the discord token
 
-embed_channel_id = ""
-embed_message_id = ""
+# pylint: disable=invalid-name
+embed_channel_id = int()
+embed_message_id = int()
+# pylint: enable=invalid-name
 
 
 class Bot(commands.Bot):
@@ -41,8 +42,8 @@ class Bot(commands.Bot):
                 guild=discord.Object(id=os.getenv("GUILD_ID"))
             )
             print(f"Synced {len(synced)} slash commands for {self.user}.")
-        except Exception as e:
-            print(e)
+        except Exception as errors:  # pylint: broad-exception-caught
+            print(errors)
 
     async def on_command_error(self, ctx, error):
         await ctx.reply(error, ephemeral=True)
@@ -221,12 +222,12 @@ class EmbedEditingMethods:
         await embed_survey.wait()
         try:
             color = discord.Colour.from_str(str(embed_survey.children[0]))
-        except:
+        except ValueError:
             await interaction.followup.send(
                 "Please provide a valid hex code.", ephemeral=True
             )
         else:
-            self.embed.color = color
+            self.embed.colour = color
 
     async def remove_field(self, interaction: discord.Interaction) -> None:
         """Removes a message field from the embed."""
@@ -237,11 +238,9 @@ class EmbedEditingMethods:
         field_options = list()
         for index, field in enumerate(self.embed.fields):
             field_options.append(
-                discord.SelectOption(
-                    label=str(field.name)[0:30], value=str(index), emoji="\U0001f5d1"
-                )
+                discord.SelectOption(label=str(field.name)[0:30], value=str(index))
             )
-        select = SelectPrompt(
+        select = FieldToRemove(
             placeholder="Select a field to remove...",
             options=field_options,
             max_values=len(field_options),
@@ -295,7 +294,7 @@ class EmbedEditingMethods:
                 inline = False
             else:
                 raise Exception("Bad Bool Input.")
-        except:
+        except Exception:
             await interaction.followup.send(
                 "Please provide a valid input in `inline` either True Or False.",
                 ephemeral=True,
@@ -306,16 +305,19 @@ class EmbedEditingMethods:
             )
 
 
-class SelectPrompt(discord.ui.View):
+class FieldToRemove(discord.ui.View):
     """
     Subclass of the `discord.ui.View` class. Used for creating a select prompt.
 
     Args:
         placeholder (str): The placeholder text that will be displayed
         in the channel select menu.
-        options (List[SelectOption]): A list of `SelectOption` instances that will be displayed as options in the select prompt.
-        max_values (int, optional): The maximum number of options that can be selected by the user. Default is 1.
-        ephemeral (bool, optional): A boolean indicating whether the select prompt will be sent as an ephemeral message or not. Default is False.
+        options (List[SelectOption]): A list of `SelectOption` instances that
+        will be displayed as options in the select prompt.
+        max_values (int, optional): The maximum number of options
+        that can be selected by the user. Default is 1.
+        ephemeral (bool, optional): A boolean indicating whether
+        the select prompt will be sent as an ephemeral message or not. Default is False.
     """
 
     def __init__(
@@ -326,7 +328,9 @@ class SelectPrompt(discord.ui.View):
         ephemeral: bool = False,
     ) -> None:
         super().__init__()
-        self.children[0].placeholder, self.children[0].max_values, self.children[0].options = placeholder, max_values, options  # type: ignore
+        self.children[0].placeholder = placeholder
+        self.children[0].max_values = max_values
+        self.children[0].options = options
         self.values = None
         self.ephemeral = ephemeral
 
@@ -334,6 +338,7 @@ class SelectPrompt(discord.ui.View):
     async def select_callback(
         self, interaction: discord.Interaction, select: discord.ui.Select
     ):
+        """Creates select object that inherits it's atributes from the class."""
         await interaction.response.defer(ephemeral=self.ephemeral)
         if self.ephemeral:
             await interaction.delete_original_response()
@@ -381,7 +386,7 @@ class ChannelSelectMenu(discord.ui.View):
     async def callback(
         self, interaction: discord.Interaction, select: discord.ui.ChannelSelect
     ):
-        """Docstring"""
+        """Creates select object that inherits it's atributes from the class."""
         await interaction.response.defer(ephemeral=self.ephemeral)
         if self.ephemeral:
             await interaction.delete_original_response()
@@ -518,8 +523,10 @@ class SendButton(discord.ui.Button):
                 channel_select_menu.values[0],
                 (discord.StageChannel, discord.ForumChannel, discord.CategoryChannel),
             ):
+                # pylint: disable=invalid-name
                 global embed_channel_id
                 global embed_message_id
+                # pylint: disable=enable-name
                 embed_message = await channel_select_menu.values[0].send(
                     embed=self.embed
                 )
@@ -639,7 +646,7 @@ class HelpSelect(discord.ui.Select):
 
             :small_orange_diamond:`!embed_creator | /embed_creator` - Embed Creator
             (A tool for dynamic embed building).
-            
+
             *For more in-depth information go to:
             https://github.com/KNR-PW/discord-bot*
             """
@@ -648,14 +655,20 @@ class HelpSelect(discord.ui.Select):
         else:
             syntax1 = """
             \n
-            The bot can convert relevant commands in text into valuable information when you invoke `/embed_creator` or `!embed_creator` discord commands and try to edit either embed description or add and edit a text field.
+            The bot can convert relevant commands in text into valuable information
+            when you invoke `/embed_creator` or `!embed_creator` discord commands and
+            try to edit either embed description or add and edit a text field.
             When typing the message, commands are recognized inside curly brackets `{}`.
-            
-            :small_orange_diamond:`{list_members [...]}` - Returns a list of members who have required roles. In addition to roles, the text can include the logical operators `and`/`or` and `not`.
+
+            :small_orange_diamond:`{list_members [...]}` -
+            Returns a list of members who have required roles.
+            In addition to roles, the text can include
+            the logical operators `and`/`or` and `not`.
             """
 
             syntax2 = """
-            :small_orange_diamond:`{count_members [...]}` - Works like list_members, but instead of returning names, it returns a number.
+            :small_orange_diamond:`{count_members [...]}` - Works like list_members,
+            but instead of returning names, it returns a number.
 
             :small_orange_diamond:`{member [...]}` - Returns **@Name**.
 
@@ -665,8 +678,9 @@ class HelpSelect(discord.ui.Select):
 
             :small_orange_diamond:`{voice_channel [...]}` - Returns **@VoiceChannel**.
 
-            **In case of an incorrect argument name in the text, a missing argument, or an argument that does not exist, the bot will return `[None]`**.
-            
+            **In case of an incorrect argument name in the text, a missing argument,
+            or an argument that does not exist, the bot will return `[None]`**.
+
             *For more in-depth information go to:
             https://github.com/KNR-PW/discord-bot*
 
@@ -770,6 +784,13 @@ async def embed_creator(ctx: commands.Context):
 @app_commands.guilds(discord.Object(id=os.getenv("GUILD_ID")))
 @commands.has_permissions(administrator=True)
 async def embed_update(ctx: commands.Context):
+    """Fetches message containing embed and initializes EmbedCreator object.
+
+    Args:
+        ctx (`discord.ext.commands.Context`): necessary parameter when accesing
+        some discord server data. Used by internal methods.
+
+    """
     try:
         channel = bot.get_channel(embed_channel_id)
         last_message = await channel.fetch_message(embed_message_id)
@@ -779,7 +800,6 @@ async def embed_update(ctx: commands.Context):
         await ctx.send(content="**Preview of the embed:**", view=view, embed=last_embed)
     except AttributeError:
         await ctx.send("Could not find last embed.")
-        
 
 
 @bot.hybrid_command(

@@ -70,7 +70,7 @@ This project aims to create a personalized bot to help with server management on
 
 ---
 <p align="center">
-<img src="help_command_example.gif" alt="Help Command Example" width="40%">
+<img src="help_command_example.gif" alt="Help Command Example" width="60%">
 </p>
 
 _!help_ - shows bot usage instruction **[Function not Ready Yet]**
@@ -79,9 +79,9 @@ _!hello_ - Reads the message from the chat. Returns a greeting.
 
 _!server_ - Reads the message from the chat and returns embedded message with server stats
 
-_!embed_creator_ - Creates Embed Creator - A tool for dynamic embed building. It allows you to change various parameters of the embed live and then choose the channel on which the embed will be published.
+_/embed_creator_ (or _!embed_creator_) - Creates Embed Creator - A tool for dynamic embed building. It allows you to change various parameters of the embed live and then choose the channel on which the embed will be published. When changing description of the embed, or text value inside added text field, you can use supported [commands](#message-syntax).
 
-_/embed_creator_ - Same as !embed_creator but using discord built-in slash commands' auto-complete name hinter. When changing description of the embed, or text value inside added text field, you can use supported [commands](#message-syntax).
+_/embed_update_ (or !_embed_update_) - Loads, if exists, the last embed sent. Lets you edit the embed with the same menu as _!embed_creator_, without having to deploy the new message.
 
 ## Embed Creator Example
 
@@ -132,7 +132,7 @@ Result:
 >
 > These members are: **@A**, **@B**, **@C**.
 >
-> The **@President** of a club is **@John**.
+> The **@President** of the club is **@John**.
 >
 > Incorrect command examples: [None], [None], [None]
 
