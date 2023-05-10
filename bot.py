@@ -3,19 +3,22 @@
 """This module deploys discord bot using discord.py library."""
 
 import time
+import datetime
 import os
-from typing import List
+from typing import List, Optional
 from contextlib import suppress
 import discord
 from discord import app_commands
-from discord.ext import commands
+from discord.ext import commands, tasks
 from dotenv import load_dotenv
 
 load_dotenv()  # loads your local .env file with the discord token
+DISCORD_TOKEN: Optional[str] = os.getenv('DISCORD_TOKEN')
 
 # pylint: disable=invalid-name
 embed_channel_id = int()
 embed_message_id = int()
+embed_description = str()
 # pylint: enable=invalid-name
 
 
@@ -53,6 +56,30 @@ bot = Bot()
 bot.remove_command("help")
 
 
+@tasks.loop(seconds=15)
+async def auto_update(ctx: commands.Context, embed_message: discord.message.Message):
+    """
+    Periodically updates the last sent embed.
+
+    Loads the last message sent and its description.
+    Re-converts the text of its description to match the current state,
+    finally updates the message.
+
+    Args:
+        ctx (discord.ext.commands.context.Context): necessary parameter when
+        accesing discord server data; used by discord.ext.commands.
+        embed_message (discord.message.Message): message containing last deployed embed.
+    """
+    output_string = converting_string(ctx, str(embed_description))
+    embed = embed_message.embeds[0]
+    embed.description = output_string
+    now = datetime.datetime.now()
+    embed.set_footer(
+        text=f"""Last auto update: {now.strftime('%d.%m.%Y - %H:%M:%S')}"""
+    )
+    await embed_message.edit(embed=embed)
+
+
 class EmbedEditingMethods:
     """
     A class to be inherited by `EditSelectMenu` class. Stores methods for creating
@@ -63,11 +90,16 @@ class EmbedEditingMethods:
         will be used as the main embed.
         ctx (`discord.ext.commands.Context`): necessary parameter when accesing
         some discord server data. Used by internal methods.
+        update_flag (`bool`): A flag that can be raised to indicate whether
+        a new embed will be initialized or the previous one updated..
     """
 
-    def __init__(self, new_embed: discord.Embed, ctx: commands.Context):
+    def __init__(
+        self, new_embed: discord.Embed, ctx: commands.Context, update_flag: bool = False
+    ):
         self.embed = new_embed
         self.ctx = ctx
+        self.update_flag = update_flag if update_flag is not False else False
 
     def get_default_embed(self):
         """Sets embed back to default state"""
@@ -77,8 +109,6 @@ class EmbedEditingMethods:
         self.embed.clear_fields()
         if bool(self.embed.author):
             self.embed.remove_author()
-        if bool(self.embed.footer):
-            self.embed.remove_footer()
         if bool(self.embed.image):
             self.embed.set_image(url=None)
 
@@ -124,6 +154,9 @@ class EmbedEditingMethods:
 
     async def edit_message(self, interaction: discord.Interaction) -> None:
         """Edits the embed's title and description."""
+        # pylint: disable=invalid-name
+        global embed_description
+        # pylint: enable=invalid-name
         embed_survey = EmbedSurvey(title="Edit Embed Message")
         embed_survey.add_item(
             discord.ui.TextInput(
@@ -134,18 +167,31 @@ class EmbedEditingMethods:
                 required=False,
             )
         )
-        embed_survey.add_item(
-            discord.ui.TextInput(
-                label="Embed Description",
-                default=self.embed.description,
-                placeholder="Description to display in the embed",
-                style=discord.TextStyle.paragraph,
-                required=False,
-                max_length=4000,
+        if self.update_flag is False:
+            embed_survey.add_item(
+                discord.ui.TextInput(
+                    label="Embed Description",
+                    default=self.embed.description,
+                    placeholder="Description to display in the embed",
+                    style=discord.TextStyle.paragraph,
+                    required=False,
+                    max_length=4000,
+                )
             )
-        )
+        else:
+            embed_survey.add_item(
+                discord.ui.TextInput(
+                    label="Embed Description",
+                    default=str(embed_description),
+                    placeholder="Description to display in the embed",
+                    style=discord.TextStyle.paragraph,
+                    required=False,
+                    max_length=4000,
+                )
+            )
         await interaction.response.send_modal(embed_survey)
         await embed_survey.wait()
+        embed_description = embed_survey.children[1]
         output_string = converting_string(self.ctx, str(embed_survey.children[1]))
         self.embed.title, self.embed.description = (
             str(embed_survey.children[0]),
@@ -181,32 +227,6 @@ class EmbedEditingMethods:
         await interaction.response.send_modal(embed_survey)
         await embed_survey.wait()
         self.embed.set_image(url=str(embed_survey.children[0]))
-
-    async def edit_footer(self, interaction: discord.Interaction) -> None:
-        """Edits the embed's footer (text, icon_url)."""
-        embed_survey = EmbedSurvey(title="Edit Embed Footer")
-        embed_survey.add_item(
-            discord.ui.TextInput(
-                label="Footer Text",
-                max_length=255,
-                required=False,
-                default=self.embed.footer.text,
-                placeholder="Text you want to display on embed footer",
-            )
-        )
-        embed_survey.add_item(
-            discord.ui.TextInput(
-                label="Footer Icon",
-                required=False,
-                default=self.embed.footer.icon_url,
-                placeholder="Icon you want to display on embed footer",
-            )
-        )
-        await interaction.response.send_modal(embed_survey)
-        await embed_survey.wait()
-        self.embed.set_footer(
-            text=str(embed_survey.children[0]), icon_url=str(embed_survey.children[1])
-        )
 
     async def edit_color(self, interaction: discord.Interaction) -> None:
         """Edits the embed's color"""
@@ -424,11 +444,14 @@ class EditSelectMenu(discord.ui.Select):
         will be used as the main embed.
         ctx (`discord.ext.commands.Context`): necessary parameter when accesing
         some discord server data. Used by internal methods.
+        update_flag (`bool`): A raised flag to indicate whether
+        a new embed will be initialized or the previous one updated.
     """
 
-    def __init__(self, new_embed, ctx: commands.Context):
+    def __init__(self, new_embed, ctx: commands.Context, update_flag: bool):
         self.embed = new_embed
         self.ctx = ctx
+        self.update_flag = update_flag
 
         options = [
             discord.SelectOption(
@@ -451,9 +474,6 @@ class EditSelectMenu(discord.ui.Select):
                 label="Image", description="Set an image for the embed"
             ),
             discord.SelectOption(
-                label="Footer", description="Set a footer for the embed"
-            ),
-            discord.SelectOption(
                 label="Color", description="Set a color for the embed"
             ),
         ]
@@ -467,7 +487,7 @@ class EditSelectMenu(discord.ui.Select):
     async def callback(self, interaction: discord.Interaction):
         selected_option = self.values[0]
 
-        creator_methods = EmbedEditingMethods(self.embed, self.ctx)
+        creator_methods = EmbedEditingMethods(self.embed, self.ctx, self.update_flag)
         if selected_option == "Title and Message":
             await creator_methods.edit_message(interaction)
         elif selected_option == "Add Field":
@@ -481,8 +501,6 @@ class EditSelectMenu(discord.ui.Select):
             await creator_methods.edit_thumbnail(interaction)
         elif selected_option == "Image":
             await creator_methods.edit_image(interaction)
-        elif selected_option == "Footer":
-            await creator_methods.edit_footer(interaction)
         elif selected_option == "Color":
             await creator_methods.edit_color(interaction)
         if selected_option != "Remove Field":
@@ -533,6 +551,7 @@ class SendButton(discord.ui.Button):
                 embed_message_id = embed_message.id
                 embed_channel_id = channel_select_menu.values[0].id
                 await interaction.message.delete()  # type: ignore
+                auto_update.start(self.ctx, embed_message)
 
 
 class UpdateButton(discord.ui.Button):
@@ -544,18 +563,26 @@ class UpdateButton(discord.ui.Button):
         last_embed (`discord.Embed`): An object from the `Discord.Embed` class that
         will be used as the main embed.
         ctx (`discord.ext.commands.Context`): necessary parameter when accesing
-        some discord server data. Used by internal methods.
+        some discord server data. Used by internal methods
+        last_message (`discord.message.Message`): last sent message by bot,
+        created from the `EmbedCreator`.
     """
 
-    def __init__(self, last_embed: discord.Embed, ctx: commands.Context, last_message):
+    def __init__(
+        self,
+        last_embed: discord.Embed,
+        ctx: commands.Context,
+        last_message: discord.message.Message,
+    ):
         self.embed = last_embed
         self.ctx = ctx
         self.last_message = last_message
         super().__init__(label="Update Embed", style=discord.ButtonStyle.green)
 
     async def callback(self, interaction: discord.Interaction):
-        await self.last_message.edit(embed=self.embed)
+        embed_message = await self.last_message.edit(embed=self.embed)
         await interaction.message.delete()  # type: ignore
+        auto_update.restart(self.ctx, embed_message)
 
 
 class ResetButton(discord.ui.Button):
@@ -731,22 +758,25 @@ class EmbedCreator(discord.ui.View):
         will be used as the main embed.
         ctx (`discord.ext.commands.Context`): necessary parameter when accesing
         some discord server data. Used by internal methods.
-        TODO Remaining ARGS
+        last_message (`discord.message.Message`): last sent message by bot
+        from `EmbedCreator`.
+        update_flag (`bool`): A flag that can be raised to indicate whether
+        a new embed will be initialized or the previous one updated..
     """
 
     def __init__(
         self,
         new_embed: discord.Embed,
         ctx: commands.Context,
-        last_message=None,
-        update_flag=False,
+        last_message: Optional[discord.message.Message] = None,
+        update_flag: bool = False,
     ):
         self.embed = new_embed
         self.ctx = ctx
         self.last_message = last_message if last_message is not None else None
         self.update_flag = update_flag if update_flag is not False else False
         super().__init__()
-        self.add_item(EditSelectMenu(self.embed, self.ctx))
+        self.add_item(EditSelectMenu(self.embed, self.ctx, self.update_flag))
         if update_flag is False:
             self.add_item(SendButton(self.embed, self.ctx))
         else:
@@ -828,6 +858,7 @@ async def hello(ctx):
     Reads the message if the message starts with the "command_prefix"
     that was set when initializing commands.Bot object and ends with
     the name in the title of the method. Returns str in "ctx.send()".
+
     Args:
         ctx (`discord.ext.commands.Context`): necessary parameter when accesing
         some discord server data.
@@ -841,19 +872,19 @@ async def hello(ctx):
 
 def finding_single_member(ctx, member_name: str) -> str:
     """Takes the string and returns the corresponding member from the discord server.
-    `
-        Each name on the discord server looks like this: name#XXXX,
-        where "XXXX" is any 4-digit number. The function reads the entire string,
-        finds where the # symbol is, treats it as a dividing line to create
-        two new strings, which are used to look up the formatted member's name
-        from the server's database.
 
-        Args:
-            ctx (discord.ext.commands.context.Context): necessary parameter when
-            accesing discord server data; used by discord.ext.commands.
-            member_name (str): A string representing a member to be searched for.
-        Returns:
-            str: A string with the mentioned role name from the discord server.
+    Each name on the discord server looks like this: name#XXXX,
+    where "XXXX" is any 4-digit number. The function reads the entire string,
+    finds where the # symbol is, treats it as a dividing line to create
+    two new strings, which are used to look up the formatted member's name
+    from the server's database.
+
+    Args:
+        ctx (discord.ext.commands.context.Context): necessary parameter when
+        accesing discord server data; used by discord.ext.commands.
+        member_name (str): A string representing a member to be searched for.
+    Returns:
+        str: A string with the mentioned role name from the discord server.
     """
     start_index = member_name.find("#")
     name = member_name[:start_index]
@@ -1270,5 +1301,7 @@ async def server(ctx):
     embed_1.add_field(name="Description", value="123", inline=False)
     await ctx.send(embed=embed_1)
 
-
-bot.run(os.getenv("DISCORD_TOKEN"))
+if DISCORD_TOKEN:
+    bot.run(DISCORD_TOKEN)
+else:
+    print("Can't find token to access the bot.")
