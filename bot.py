@@ -13,7 +13,7 @@ from discord.ext import commands, tasks
 from dotenv import load_dotenv
 
 load_dotenv()  # loads your local .env file with the discord token
-DISCORD_TOKEN: Optional[str] = os.getenv('DISCORD_TOKEN')
+DISCORD_TOKEN: Optional[str] = os.getenv("DISCORD_TOKEN")
 
 # pylint: disable=invalid-name
 embed_channel_id = int()
@@ -45,15 +45,19 @@ class Bot(commands.Bot):
                 guild=discord.Object(id=os.getenv("GUILD_ID"))
             )
             print(f"Synced {len(synced)} slash commands for {self.user}.")
-        except Exception as errors:  # pylint: broad-exception-caught
+        except Exception as errors:  # pylint: disable=broad-exception-caught
             print(errors)
-
-    async def on_command_error(self, ctx, error):
-        await ctx.reply(error, ephemeral=True)
 
 
 bot = Bot()
 bot.remove_command("help")
+
+
+@bot.event
+async def on_command_error(ctx: commands.Context, error: Exception):
+    """Replies with an error message if one occured."""
+    print(str(error))
+    await ctx.reply(str(error), ephemeral=True)
 
 
 @tasks.loop(seconds=15)
@@ -154,9 +158,7 @@ class EmbedEditingMethods:
 
     async def edit_message(self, interaction: discord.Interaction) -> None:
         """Edits the embed's title and description."""
-        # pylint: disable=invalid-name
-        global embed_description
-        # pylint: enable=invalid-name
+        global embed_description  # pylint: disable=invalid-name
         embed_survey = EmbedSurvey(title="Edit Embed Message")
         embed_survey.add_item(
             discord.ui.TextInput(
@@ -313,8 +315,8 @@ class EmbedEditingMethods:
             elif str(embed_survey.children[2]).lower() == "false":
                 inline = False
             else:
-                raise Exception("Bad Bool Input.")
-        except Exception:
+                raise ValueError("Bad Bool Input.")
+        except ValueError:
             await interaction.followup.send(
                 "Please provide a valid input in `inline` either True Or False.",
                 ephemeral=True,
@@ -541,10 +543,8 @@ class SendButton(discord.ui.Button):
                 channel_select_menu.values[0],
                 (discord.StageChannel, discord.ForumChannel, discord.CategoryChannel),
             ):
-                # pylint: disable=invalid-name
-                global embed_channel_id
-                global embed_message_id
-                # pylint: disable=enable-name
+                global embed_channel_id  # pylint: disable=invalid-name
+                global embed_message_id  # pylint: disable=invalid-name
                 embed_message = await channel_select_menu.values[0].send(
                     embed=self.embed
                 )
@@ -823,11 +823,14 @@ async def embed_update(ctx: commands.Context):
     """
     try:
         channel = bot.get_channel(embed_channel_id)
-        last_message = await channel.fetch_message(embed_message_id)
-        last_embed = last_message.embeds[0]
-        update_flag = True
-        view = EmbedCreator(last_embed, ctx, last_message, update_flag)
-        await ctx.send(content="**Preview of the embed:**", view=view, embed=last_embed)
+        if channel is not None:
+            last_message = await channel.fetch_message(embed_message_id)
+            last_embed = last_message.embeds[0]
+            update_flag = True
+            view = EmbedCreator(last_embed, ctx, last_message, update_flag)
+            await ctx.send(
+                content="**Preview of the embed:**", view=view, embed=last_embed
+            )
     except AttributeError:
         await ctx.send("Could not find last embed.")
 
@@ -849,25 +852,6 @@ async def bot_help(ctx: commands.Context):
     """
     view = HelpMenu()
     await ctx.send(view=view)
-
-
-@bot.command()
-async def hello(ctx):
-    """Reads the message from the chat. Returns the corresponding message.
-
-    Reads the message if the message starts with the "command_prefix"
-    that was set when initializing commands.Bot object and ends with
-    the name in the title of the method. Returns str in "ctx.send()".
-
-    Args:
-        ctx (`discord.ext.commands.Context`): necessary parameter when accesing
-        some discord server data.
-        Used by internal methods.
-    Returns:
-        discord.message.Message
-    """
-
-    await ctx.send("hi")
 
 
 def finding_single_member(ctx, member_name: str) -> str:
@@ -1213,93 +1197,6 @@ def converting_string(ctx, input_string: str) -> str:
         end_index += 1
     return output_string
 
-
-@bot.command()
-async def embed1(ctx):
-    """Produces a discord embed from a modified string created in itself.
-
-    Takes a string from within itself. Passes it into a parsing function.
-    The result of the second function is passed then into a newly created
-    discord embed object.
-
-    Args:
-        ctx (discord.ext.commands.context.Context): necessary parameter when
-        accesing discord server data; used by discord.ext.commands.
-    Returns:
-        discord.embeds.Embed: A discord.embeds.Embed object with the parsed message.
-    """
-    input_string = """
-    {text_channel ogólny}
-    {voice_channel ogólny}
-    """
-    output_string = converting_string(ctx, input_string)
-
-    simple_embed = discord.Embed()
-    simple_embed.add_field(name="", value=f"{output_string}", inline=True)
-    await ctx.send(embed=simple_embed)
-
-
-@bot.command()
-async def server(ctx):
-    """Reads the message from the chat and returns
-    embedded message with server stats.
-
-    Reads the message if the message starts with the "command_prefix"
-    that was set in when initializing commands.Bot object and ends with
-    the name in the title of the method. Returns str in "ctx.send()".
-
-    Parameters in the embed_1 message:
-    - Server name and description
-    - Server ID number
-    - Server creation date
-    - Server owner
-    - Number of members
-    - Number of text and voice channels
-    - List of roles on the server
-    - Server icon
-    - Footer message
-    - Message the author and his icon.
-
-    Args:
-        ctx (discord.ext.commands.context.Context): necessary parameter when
-        accesing discord server data; used by discord.ext.commands.
-    Returns:
-        discord.embeds.Embed - A discord.embeds.Embed class with the parsed message.
-    """
-
-    embed_1 = discord.Embed(
-        title=f"{ctx.guild.name} Info",
-        description="Information of this Server",
-        color=discord.Colour.blue(),
-    )
-    embed_1.add_field(name="🆔Server ID", value=f"{ctx.guild.id}", inline=True)
-    embed_1.add_field(
-        name="📆Created On", value=ctx.guild.created_at.strftime("%b %d %Y"), inline=True
-    )
-    embed_1.add_field(name="👑Owner", value=f"{ctx.guild.owner}", inline=True)
-    embed_1.add_field(
-        name="👥Members", value=f"{ctx.guild.member_count} Members", inline=True
-    )
-    em_t_channels = len(ctx.guild.text_channels)
-    em_v_channels = len(ctx.guild.voice_channels)
-    embed_1.add_field(
-        name="💬Channels",
-        value=f"{em_t_channels} Text | {em_v_channels} Voice",
-        inline=True,
-    )
-    rolelist = [r.mention for r in ctx.guild.roles if r != ctx.guild.default_role]
-    roles = ", ".join(rolelist)
-    embed_1.add_field(
-        name="Roles",
-        value=roles,
-        # value=f'{", ".join([str(r.name) for r in ctx.guild.roles])}'
-        inline=False,
-    )
-    embed_1.set_thumbnail(url=ctx.guild.icon)
-    embed_1.set_footer(text="⭐PLACEHOLDER⭐")
-    embed_1.set_author(name=f"{ctx.author.name}", icon_url=ctx.message.author.avatar)
-    embed_1.add_field(name="Description", value="123", inline=False)
-    await ctx.send(embed=embed_1)
 
 if DISCORD_TOKEN:
     bot.run(DISCORD_TOKEN)
