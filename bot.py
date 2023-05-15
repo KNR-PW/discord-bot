@@ -74,7 +74,7 @@ async def auto_update(ctx: commands.Context, embed_message: discord.message.Mess
         accesing discord server data; used by discord.ext.commands.
         embed_message (discord.message.Message): message containing last deployed embed.
     """
-    output_string = converting_string(ctx, str(embed_description))
+    output_string = convert_string(ctx, str(embed_description))
     embed = embed_message.embeds[0]
     embed.description = output_string
     now = datetime.datetime.now()
@@ -194,7 +194,7 @@ class EmbedEditingMethods:
         await interaction.response.send_modal(embed_survey)
         await embed_survey.wait()
         embed_description = embed_survey.children[1]
-        output_string = converting_string(self.ctx, str(embed_survey.children[1]))
+        output_string = convert_string(self.ctx, str(embed_survey.children[1]))
         self.embed.title, self.embed.description = (
             str(embed_survey.children[0]),
             output_string,
@@ -255,9 +255,9 @@ class EmbedEditingMethods:
         """Removes a message field from the embed."""
         if not self.embed.fields:
             return await interaction.response.send_message(
-                "There is no fields to remove.", ephemeral=True
+                "There are no fields to remove.", ephemeral=True
             )
-        field_options = list()
+        field_options = []
         for index, field in enumerate(self.embed.fields):
             field_options.append(
                 discord.SelectOption(label=str(field.name)[0:30], value=str(index))
@@ -265,7 +265,7 @@ class EmbedEditingMethods:
         select = FieldToRemove(
             placeholder="Select a field to remove...",
             options=field_options,
-            max_values=len(field_options),
+            max_values=1,
             ephemeral=True,
         )
         await interaction.response.send_message(view=select, ephemeral=True)
@@ -307,7 +307,7 @@ class EmbedEditingMethods:
 
         await interaction.response.send_modal(embed_survey)
         await embed_survey.wait()
-        output_string = converting_string(self.ctx, str(embed_survey.children[1]))
+        output_string = convert_string(self.ctx, str(embed_survey.children[1]))
         try:
             inline = False
             if str(embed_survey.children[2]).lower() == "true":
@@ -353,7 +353,7 @@ class FieldToRemove(discord.ui.View):
         self.children[0].placeholder = placeholder
         self.children[0].max_values = max_values
         self.children[0].options = options
-        self.values = None
+        self.values = Optional[List[str]]
         self.ephemeral = ephemeral
 
     @discord.ui.select()
@@ -450,67 +450,59 @@ class EditSelectMenu(discord.ui.Select):
         a new embed will be initialized or the previous one updated.
     """
 
-    def __init__(self, new_embed, ctx: commands.Context, update_flag: bool):
-        self.embed = new_embed
-        self.ctx = ctx
-        self.update_flag = update_flag
-
-        options = [
-            discord.SelectOption(
-                label="Title and Message",
-                description="Set a title and description for the embed",
-            ),
-            discord.SelectOption(
-                label="Add Field", description="Add a field to the embed"
-            ),
-            discord.SelectOption(
-                label="Remove Field", description="Remove a field from the embed"
-            ),
-            discord.SelectOption(
-                label="Author", description="Set a author for the embed"
-            ),
-            discord.SelectOption(
-                label="Thumbnail", description="Set a thumbnail for the embed"
-            ),
-            discord.SelectOption(
-                label="Image", description="Set an image for the embed"
-            ),
-            discord.SelectOption(
-                label="Color", description="Set a color for the embed"
-            ),
-        ]
+    def __init__(
+        self, new_embed: discord.Embed, ctx: commands.Context, update_flag: bool
+    ):
         super().__init__(
             placeholder="Expand the list to edit the embed's...",
-            options=options,
             min_values=1,
             max_values=1,
+            options=[
+                discord.SelectOption(
+                    label="Title and Message",
+                    description="Set a title and description for the embed",
+                ),
+                discord.SelectOption(
+                    label="Add Field", description="Add a field to the embed"
+                ),
+                discord.SelectOption(
+                    label="Remove Field", description="Remove a field from the embed"
+                ),
+                discord.SelectOption(
+                    label="Author", description="Set a author for the embed"
+                ),
+                discord.SelectOption(
+                    label="Thumbnail", description="Set a thumbnail for the embed"
+                ),
+                discord.SelectOption(
+                    label="Image", description="Set an image for the embed"
+                ),
+                discord.SelectOption(
+                    label="Color", description="Set a color for the embed"
+                ),
+            ],
         )
+        self.embed, self.ctx, self.update_flag = new_embed, ctx, update_flag
 
-    async def callback(self, interaction: discord.Interaction):
+    async def callback(self, interaction):
+        options = {
+            "Title and Message": "edit_message",
+            "Add Field": "add_field",
+            "Remove Field": "remove_field",
+            "Author": "edit_author",
+            "Thumbnail": "edit_thumbnail",
+            "Image": "edit_image",
+            "Color": "edit_color",
+        }
         selected_option = self.values[0]
-
         creator_methods = EmbedEditingMethods(self.embed, self.ctx, self.update_flag)
-        if selected_option == "Title and Message":
-            await creator_methods.edit_message(interaction)
-        elif selected_option == "Add Field":
-            await creator_methods.add_field(interaction)
-        elif selected_option == "Remove Field":
+        if selected_option == "Remove Field":
             await creator_methods.remove_field(interaction)
             await interaction.message.edit(embed=self.embed)
-        elif selected_option == "Author":
-            await creator_methods.edit_author(interaction)
-        elif selected_option == "Thumbnail":
-            await creator_methods.edit_thumbnail(interaction)
-        elif selected_option == "Image":
-            await creator_methods.edit_image(interaction)
-        elif selected_option == "Color":
-            await creator_methods.edit_color(interaction)
-        if selected_option != "Remove Field":
-            await self.update_embed(interaction)
-
-    async def update_embed(self, interaction: discord.Interaction):
-        """Updates embed."""
-        await interaction.edit_original_response(embed=self.embed)
+        elif selected_option in options:
+            await getattr(creator_methods, options[selected_option])(interaction)
+            if selected_option != "Remove Field":
+                await interaction.edit_original_response(embed=self.embed)
 
 
 class SendButton(discord.ui.Button):
@@ -854,7 +846,7 @@ async def bot_help(ctx: commands.Context):
     await ctx.send(view=view)
 
 
-def finding_single_member(ctx, member_name: str) -> str:
+def find_single_member(ctx, member_name: str) -> str:
     """Takes the string and returns the corresponding member from the discord server.
 
     Each name on the discord server looks like this: name#XXXX,
@@ -883,7 +875,7 @@ def finding_single_member(ctx, member_name: str) -> str:
     return discord_member
 
 
-def finding_single_role(ctx, rolename: str) -> str:
+def find_single_role(ctx, rolename: str) -> str:
     """Takes the string and returns the corresponding role from the discord server.
 
     Args:
@@ -901,7 +893,7 @@ def finding_single_role(ctx, rolename: str) -> str:
     return discord_role
 
 
-def finding_single_text_channel(ctx, channel_name: str) -> str:
+def find_single_text_channel(ctx, channel_name: str) -> str:
     """Takes the string and returns the corresponding text channel from the
     discord server.
 
@@ -916,11 +908,10 @@ def finding_single_text_channel(ctx, channel_name: str) -> str:
     discord_channel = discord.utils.get(ctx.guild.text_channels, name=f"{channel_name}")
     if discord_channel is not None:
         return f"<#{discord_channel.id}>"
-    else:
-        return "[None]"
+    return "[None]"
 
 
-def finding_single_voice_channel(ctx, channel_name: str) -> str:
+def find_single_voice_channel(ctx, channel_name: str) -> str:
     """Takes the string and returns the corresponding voice channel from the
     discord server.
 
@@ -937,13 +928,10 @@ def finding_single_voice_channel(ctx, channel_name: str) -> str:
     )
     if discord_channel is not None:
         return f"<#{discord_channel.id}>"
-    else:
-        return "[None]"
+    return "[None]"
 
 
-def searching_for_roles(
-    ctx, separated_names_from_str: list, list_for_names: list
-) -> list:
+def search_for_roles(ctx, separated_names_from_str: list, list_for_names: list) -> list:
     """Take the list of names and return the list of discord roles.
 
     Each name in the list of names is checked for occurrence in the discord server.
@@ -969,7 +957,7 @@ def searching_for_roles(
     return list_for_names
 
 
-def creating_set_of_roles(
+def create_set_of_roles(
     ctx,
     message_core_str: str,
     roles: list,
@@ -1057,7 +1045,7 @@ def role_searching_core(ctx, message_core_str: str) -> set | str:
                 role for role in role_names_list[1:] if " not " not in role
             ]
         not_roles: list = []
-        not_roles = searching_for_roles(ctx, not_role_names_list, not_roles)
+        not_roles = search_for_roles(ctx, not_role_names_list, not_roles)
         if not not_roles:
             final_converted_str = "[None]"
             return final_converted_str
@@ -1072,18 +1060,18 @@ def role_searching_core(ctx, message_core_str: str) -> set | str:
             else message_core_str.split(" or ")
         )
         roles = []
-        roles = searching_for_roles(ctx, role_names_list, roles)
+        roles = search_for_roles(ctx, role_names_list, roles)
         if not roles:
             final_converted_str = "[None]"
             return final_converted_str
 
-    members = creating_set_of_roles(
+    members = create_set_of_roles(
         ctx, message_core_str, roles, not_roles, only_nots_in_str
     )
     return members
 
 
-def counting_members(ctx, message_core_str: str) -> str:
+def count_members(ctx, message_core_str: str) -> str:
     """Gets a string. Returns either a string with a number of members or a message.
 
     Calls a subfunction. Checks whether the returned variable is a string or a list.
@@ -1107,7 +1095,7 @@ def counting_members(ctx, message_core_str: str) -> str:
     return final_converted_str
 
 
-def listing_members(ctx, message_core_str: str) -> str:
+def list_members(ctx, message_core_str: str) -> str:
     """Gets a string. Returns either a string with members names or a message.
 
     Calls a subfunction. Checks whether the returned variable is a string or a list.
@@ -1134,7 +1122,7 @@ def listing_members(ctx, message_core_str: str) -> str:
     return final_converted_str
 
 
-def converting_string(ctx, input_string: str) -> str:
+def convert_string(ctx, input_string: str) -> str:
     """Searches for the functional field in a string and based on the condition,
     passes it to the other functions.
 
@@ -1170,30 +1158,25 @@ def converting_string(ctx, input_string: str) -> str:
         function_string = edited_string.strip()
         if function_string.startswith("list_members "):
             message_core_str = function_string[13:]
-            final_converted_str = listing_members(ctx, message_core_str)
-            output_string += final_converted_str
+            final_converted_str = list_members(ctx, message_core_str)
         elif function_string.startswith("count_members "):
             message_core_str = function_string[14:]
-            final_converted_str = counting_members(ctx, message_core_str)
-            output_string += final_converted_str
+            final_converted_str = count_members(ctx, message_core_str)
         elif function_string.startswith("role "):
             message_core_str = function_string[5:]
-            final_converted_str = finding_single_role(ctx, message_core_str)
-            output_string += final_converted_str
+            final_converted_str = find_single_role(ctx, message_core_str)
         elif function_string.startswith("member "):
             message_core_str = function_string[7:]
-            final_converted_str = finding_single_member(ctx, message_core_str)
-            output_string += final_converted_str
+            final_converted_str = find_single_member(ctx, message_core_str)
         elif function_string.startswith("text_channel "):
             message_core_str = function_string[13:]
-            final_converted_str = finding_single_text_channel(ctx, message_core_str)
-            output_string += final_converted_str
+            final_converted_str = find_single_text_channel(ctx, message_core_str)
         elif function_string.startswith("voice_channel "):
             message_core_str = function_string[14:]
-            final_converted_str = finding_single_voice_channel(ctx, message_core_str)
-            output_string += final_converted_str
+            final_converted_str = find_single_voice_channel(ctx, message_core_str)
         else:
-            output_string += "{" + function_string + "}"
+            final_converted_str += "{" + function_string + "}"
+        output_string += final_converted_str
         end_index += 1
     return output_string
 
