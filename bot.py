@@ -7,6 +7,7 @@ import datetime
 import os
 from typing import List, Optional
 from contextlib import suppress
+import configparser
 import discord
 from discord import app_commands
 from discord.ext import commands, tasks
@@ -15,11 +16,9 @@ from dotenv import load_dotenv
 load_dotenv()  # loads your local .env file with the discord token
 DISCORD_TOKEN: Optional[str] = os.getenv("DISCORD_TOKEN")
 
-# pylint: disable=invalid-name
-embed_channel_id = int()
-embed_message_id = int()
-embed_description = str()
-# pylint: enable=invalid-name
+config = configparser.ConfigParser()
+config.read("config.ini")
+print(config.sections())
 
 
 class Bot(commands.Bot):
@@ -33,8 +32,6 @@ class Bot(commands.Bot):
         intents.message_content = True
         super().__init__(command_prefix="!", intents=intents)
 
-    # async def setup_hook(self):
-
     async def on_ready(self):
         """Sends notification message when connected to the server."""
         print(f"\nLogged in as {self.user} (ID: {self.user.id})")
@@ -47,6 +44,47 @@ class Bot(commands.Bot):
             print(f"Synced {len(synced)} slash commands for {self.user}.")
         except Exception as errors:  # pylint: disable=broad-exception-caught
             print(errors)
+        await self.setup()
+
+    async def setup(self):
+        """
+        Reads data from the `config.ini`, recalls the last sent message,
+        runs `auto_update`.
+
+        Checks if `config.ini` contains data to retrieve
+        the last message sent by the bot.
+        Recalls the message from this data and runs `auto_update`.
+        In case of failure, it informs about the reason of the problem
+        and overwrites the `False` value with all data from the `config.ini` file.
+        """
+        print("\nAttempting to retrieve last message.")
+        await self.wait_until_ready()
+        try:
+            embed_channel_id = config["GlobalVars"]["embed_channel_id"]
+            embed_message_id = config["GlobalVars"]["embed_message_id"]
+            channel = await self.fetch_channel(embed_channel_id)
+        except (discord.NotFound, discord.HTTPException):
+            print("\nChannel Not Found.")
+            config.set("GlobalVars", "embed_message_id", "False")
+            config.set("GlobalVars", "embed_channel_id", "False")
+            config.set("GlobalVars", "embed_description", "False")
+            with open("config.ini", "w", encoding="utf-8") as configfile:
+                config.write(configfile)
+            return
+        try:
+            last_message = await channel.fetch_message(embed_message_id)
+            embed = last_message.embeds[0]
+            ctx = await self.get_context(last_message)
+            auto_update.start(last_message, embed, ctx)
+        except (discord.NotFound, discord.HTTPException):
+            print("\nMessage not Found.")
+            config.set("GlobalVars", "embed_message_id", "False")
+            config.set("GlobalVars", "embed_channel_id", "False")
+            config.set("GlobalVars", "embed_description", "False")
+            with open("config.ini", "w", encoding="utf-8") as configfile:
+                config.write(configfile)
+            return
+        print("\nLast message found successfully. Automatic refresh started.")
 
 
 bot = Bot()
@@ -61,27 +99,32 @@ async def on_command_error(ctx: commands.Context, error: Exception):
 
 
 @tasks.loop(seconds=15)
-async def auto_update(ctx: commands.Context, embed_message: discord.message.Message):
+async def auto_update(
+    last_message: discord.message.Message, embed: discord.Embed, ctx: commands.Context
+):
     """
-    Periodically updates the last sent embed.
+    Periodically updates the last sent embed. Looks for changes in embed description.
 
     Loads the last message sent and its description.
     Re-converts the text of its description to match the current state,
     finally updates the message.
 
     Args:
+        last_message (`discord.message.Message`): last sent message by bot,
+        created from the `EmbedCreator`.
+        embed (`discord.Embed`): An object from the `Discord.Embed` class that
+        will be used as the main embed.
         ctx (discord.ext.commands.context.Context): necessary parameter when
-        accesing discord server data; used by discord.ext.commands.
-        embed_message (discord.message.Message): message containing last deployed embed.
+        accesing discoFrd server data; used by discord.ext.commands.
     """
-    output_string = convert_string(ctx, str(embed_description))
-    embed = embed_message.embeds[0]
+    embed_description = config["GlobalVars"]["embed_description"]
+    output_string = convert_string(ctx, embed_description)
     embed.description = output_string
     now = datetime.datetime.now()
     embed.set_footer(
         text=f"""Last auto update: {now.strftime('%d.%m.%Y - %H:%M:%S')}"""
     )
-    await embed_message.edit(embed=embed)
+    await last_message.edit(embed=embed)
 
 
 class EmbedEditingMethods:
@@ -158,7 +201,7 @@ class EmbedEditingMethods:
 
     async def edit_message(self, interaction: discord.Interaction) -> None:
         """Edits the embed's title and description."""
-        global embed_description  # pylint: disable=invalid-name
+        embed_description = config["GlobalVars"]["embed_description"]
         embed_survey = EmbedSurvey(title="Edit Embed Message")
         embed_survey.add_item(
             discord.ui.TextInput(
@@ -184,7 +227,7 @@ class EmbedEditingMethods:
             embed_survey.add_item(
                 discord.ui.TextInput(
                     label="Embed Description",
-                    default=str(embed_description),
+                    default=embed_description,
                     placeholder="Description to display in the embed",
                     style=discord.TextStyle.paragraph,
                     required=False,
@@ -194,6 +237,9 @@ class EmbedEditingMethods:
         await interaction.response.send_modal(embed_survey)
         await embed_survey.wait()
         embed_description = embed_survey.children[1]
+        config.set("GlobalVars", "embed_description", str(embed_description))
+        with open("config.ini", "w", encoding="utf-8") as configfile:
+            config.write(configfile)
         output_string = convert_string(self.ctx, str(embed_survey.children[1]))
         self.embed.title, self.embed.description = (
             str(embed_survey.children[0]),
@@ -535,15 +581,24 @@ class SendButton(discord.ui.Button):
                 channel_select_menu.values[0],
                 (discord.StageChannel, discord.ForumChannel, discord.CategoryChannel),
             ):
-                global embed_channel_id  # pylint: disable=invalid-name
-                global embed_message_id  # pylint: disable=invalid-name
                 embed_message = await channel_select_menu.values[0].send(
                     embed=self.embed
                 )
                 embed_message_id = embed_message.id
                 embed_channel_id = channel_select_menu.values[0].id
+                print(self.embed.description)
+                config.set("GlobalVars", "embed_message_id", str(embed_message_id))
+                config.set("GlobalVars", "embed_channel_id", str(embed_channel_id))
+                config.set(
+                    "GlobalVars", "embed_description", str(self.embed.description)
+                )
+                with open("config.ini", "w", encoding="utf-8") as configfile:
+                    config.write(configfile)
                 await interaction.message.delete()  # type: ignore
-                auto_update.start(self.ctx, embed_message)
+                if auto_update.is_running():
+                    auto_update.restart(embed_message, self.embed, self.ctx)
+                else:
+                    auto_update.start(embed_message, self.embed, self.ctx)
 
 
 class UpdateButton(discord.ui.Button):
@@ -574,7 +629,7 @@ class UpdateButton(discord.ui.Button):
     async def callback(self, interaction: discord.Interaction):
         embed_message = await self.last_message.edit(embed=self.embed)
         await interaction.message.delete()  # type: ignore
-        auto_update.restart(self.ctx, embed_message)
+        auto_update.restart(embed_message, self.embed, self.ctx)
 
 
 class ResetButton(discord.ui.Button):
@@ -814,8 +869,10 @@ async def embed_update(ctx: commands.Context):
 
     """
     try:
+        embed_channel_id = int(config["GlobalVars"]["embed_channel_id"])
         channel = bot.get_channel(embed_channel_id)
-        if channel is not None:
+        if channel is not False:
+            embed_message_id = int(config["GlobalVars"]["embed_message_id"])
             last_message = await channel.fetch_message(embed_message_id)
             last_embed = last_message.embeds[0]
             update_flag = True
@@ -823,7 +880,7 @@ async def embed_update(ctx: commands.Context):
             await ctx.send(
                 content="**Preview of the embed:**", view=view, embed=last_embed
             )
-    except AttributeError:
+    except (AttributeError, ValueError):
         await ctx.send("Could not find last embed.")
 
 
