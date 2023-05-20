@@ -715,14 +715,11 @@ class HelpSelect(discord.ui.Select):
             \n
             :small_orange_diamond:`!help | /help` - Info about the bot.
 
-            :small_orange_diamond:`!hello` - Greets user.
-
-            :small_orange_diamond:`!embed1` - Text converted with the message syntax.
-
-            :small_orange_diamond:`!server` - Embedded message with the server stats.
-
             :small_orange_diamond:`!embed_creator | /embed_creator` - Embed Creator
             (A tool for dynamic embed building).
+            
+            :small_orange_diamond:`!embed_update | /embed_update` -
+            opens Embed Creator menu and lets you edit last send embed.
 
             *For more in-depth information go to:
             https://github.com/KNR-PW/discord-bot*
