@@ -12,13 +12,10 @@ import discord
 from discord import app_commands
 from discord.ext import commands, tasks
 from dotenv import load_dotenv
+from config_creator import create_config_file
 
 load_dotenv()  # loads your local .env file with the discord token
 DISCORD_TOKEN: Optional[str] = os.getenv("DISCORD_TOKEN")
-
-config = configparser.ConfigParser()
-config.read("config.ini")
-print(config.sections())
 
 
 class Bot(commands.Bot):
@@ -86,6 +83,12 @@ class Bot(commands.Bot):
             return
         print("\nLast message found successfully. Automatic refresh started.")
 
+
+CONFIG_FILE_EXISTS = os.path.exists("config.ini")
+if not CONFIG_FILE_EXISTS:
+    create_config_file()
+config = configparser.ConfigParser()
+config.read("config.ini")
 
 bot = Bot()
 bot.remove_command("help")
