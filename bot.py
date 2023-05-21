@@ -7,12 +7,11 @@ import datetime
 import os
 from typing import List, Optional
 from contextlib import suppress
-import configparser
 import discord
 from discord import app_commands
 from discord.ext import commands, tasks
 from dotenv import load_dotenv
-from config_creator import create_config_file
+from config_creator import create_config_file, save_to_config, read_from_config
 
 load_dotenv()  # loads your local .env file with the discord token
 DISCORD_TOKEN: Optional[str] = os.getenv("DISCORD_TOKEN")
@@ -57,16 +56,14 @@ class Bot(commands.Bot):
         print("\nAttempting to retrieve last message.")
         await self.wait_until_ready()
         try:
-            embed_channel_id = config["GlobalVars"]["embed_channel_id"]
-            embed_message_id = config["GlobalVars"]["embed_message_id"]
+            embed_channel_id = read_from_config("embed_channel_id")
+            embed_message_id = read_from_config("embed_message_id")
             channel = await self.fetch_channel(embed_channel_id)
         except (discord.NotFound, discord.HTTPException):
             print("\nChannel Not Found.")
-            config.set("GlobalVars", "embed_message_id", "False")
-            config.set("GlobalVars", "embed_channel_id", "False")
-            config.set("GlobalVars", "embed_description", "False")
-            with open("config.ini", "w", encoding="utf-8") as configfile:
-                config.write(configfile)
+            save_to_config(
+                embed_channel_id=False, embed_message_id=False, embed_description=False
+            )
             return
         try:
             last_message = await channel.fetch_message(embed_message_id)
@@ -75,11 +72,9 @@ class Bot(commands.Bot):
             auto_update.start(last_message, embed, ctx)
         except (discord.NotFound, discord.HTTPException):
             print("\nMessage not Found.")
-            config.set("GlobalVars", "embed_message_id", "False")
-            config.set("GlobalVars", "embed_channel_id", "False")
-            config.set("GlobalVars", "embed_description", "False")
-            with open("config.ini", "w", encoding="utf-8") as configfile:
-                config.write(configfile)
+            save_to_config(
+                embed_channel_id=False, embed_message_id=False, embed_description=False
+            )
             return
         print("\nLast message found successfully. Automatic refresh started.")
 
@@ -87,8 +82,6 @@ class Bot(commands.Bot):
 CONFIG_FILE_EXISTS = os.path.exists("config.ini")
 if not CONFIG_FILE_EXISTS:
     create_config_file()
-config = configparser.ConfigParser()
-config.read("config.ini")
 
 bot = Bot()
 bot.remove_command("help")
@@ -120,7 +113,7 @@ async def auto_update(
         ctx (discord.ext.commands.context.Context): necessary parameter when
         accesing discoFrd server data; used by discord.ext.commands.
     """
-    embed_description = config["GlobalVars"]["embed_description"]
+    embed_description = read_from_config("embed_description")
     output_string = convert_string(ctx, embed_description)
     embed.description = output_string
     now = datetime.datetime.now()
@@ -204,7 +197,7 @@ class EmbedEditingMethods:
 
     async def edit_message(self, interaction: discord.Interaction) -> None:
         """Edits the embed's title and description."""
-        embed_description = config["GlobalVars"]["embed_description"]
+        embed_description = read_from_config("embed_description")
         embed_survey = EmbedSurvey(title="Edit Embed Message")
         embed_survey.add_item(
             discord.ui.TextInput(
@@ -239,10 +232,8 @@ class EmbedEditingMethods:
             )
         await interaction.response.send_modal(embed_survey)
         await embed_survey.wait()
-        embed_description = embed_survey.children[1]
-        config.set("GlobalVars", "embed_description", str(embed_description))
-        with open("config.ini", "w", encoding="utf-8") as configfile:
-            config.write(configfile)
+        new_embed_description = embed_survey.children[1]
+        save_to_config(embed_description=str(new_embed_description))
         output_string = convert_string(self.ctx, str(embed_survey.children[1]))
         self.embed.title, self.embed.description = (
             str(embed_survey.children[0]),
@@ -589,14 +580,9 @@ class SendButton(discord.ui.Button):
                 )
                 embed_message_id = embed_message.id
                 embed_channel_id = channel_select_menu.values[0].id
-                print(self.embed.description)
-                config.set("GlobalVars", "embed_message_id", str(embed_message_id))
-                config.set("GlobalVars", "embed_channel_id", str(embed_channel_id))
-                config.set(
-                    "GlobalVars", "embed_description", str(self.embed.description)
+                save_to_config(
+                    embed_channel_id=embed_channel_id, embed_message_id=embed_message_id
                 )
-                with open("config.ini", "w", encoding="utf-8") as configfile:
-                    config.write(configfile)
                 await interaction.message.delete()  # type: ignore
                 if auto_update.is_running():
                     auto_update.restart(embed_message, self.embed, self.ctx)
@@ -717,7 +703,7 @@ class HelpSelect(discord.ui.Select):
 
             :small_orange_diamond:`!embed_creator | /embed_creator` - Embed Creator
             (A tool for dynamic embed building).
-            
+
             :small_orange_diamond:`!embed_update | /embed_update` -
             opens Embed Creator menu and lets you edit last send embed.
 
@@ -869,10 +855,10 @@ async def embed_update(ctx: commands.Context):
 
     """
     try:
-        embed_channel_id = int(config["GlobalVars"]["embed_channel_id"])
+        embed_channel_id = int(read_from_config("embed_channel_id"))
         channel = bot.get_channel(embed_channel_id)
         if channel is not False:
-            embed_message_id = int(config["GlobalVars"]["embed_message_id"])
+            embed_message_id = int(read_from_config("embed_message_id"))
             last_message = await channel.fetch_message(embed_message_id)
             last_embed = last_message.embeds[0]
             update_flag = True
@@ -1232,7 +1218,7 @@ def convert_string(ctx, input_string: str) -> str:
             message_core_str = function_string[14:]
             final_converted_str = find_single_voice_channel(ctx, message_core_str)
         else:
-            final_converted_str += "{" + function_string + "}"
+            final_converted_str = "{" + function_string + "}"
         output_string += final_converted_str
         end_index += 1
     return output_string
