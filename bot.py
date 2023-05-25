@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+# #!/usr/bin/env python3
 # *_* coding: utf-8 *_*
 """This module deploys discord bot using discord.py library."""
 
@@ -11,7 +11,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands, tasks
 from dotenv import load_dotenv
-from config_creator import create_config_file, save_to_config, read_from_config
+from config_creator import check_for_config_file, save_to_config, read_from_config
 
 load_dotenv()  # loads your local .env file with the discord token
 DISCORD_TOKEN: Optional[str] = os.getenv("DISCORD_TOKEN")
@@ -79,9 +79,7 @@ class Bot(commands.Bot):
         print("\nLast message found successfully. Automatic refresh started.")
 
 
-CONFIG_FILE_EXISTS = os.path.exists("config.ini")
-if not CONFIG_FILE_EXISTS:
-    create_config_file()
+check_for_config_file()
 
 bot = Bot()
 bot.remove_command("help")
