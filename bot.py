@@ -1,4 +1,4 @@
-# #!/usr/bin/env python3
+#!/usr/bin/env python3
 # *_* coding: utf-8 *_*
 """This module deploys discord bot using discord.py library."""
 
@@ -537,9 +537,12 @@ class EditSelectMenu(discord.ui.Select):
         if selected_option == "Remove Field":
             await creator_methods.remove_field(interaction)
             await interaction.message.edit(embed=self.embed)
+        elif selected_option == "Add Field" and len(self.embed.fields) >= 25:
+            await creator_methods.add_field(interaction)
+            await interaction.message.edit(embed=self.embed)
         elif selected_option in options:
             await getattr(creator_methods, options[selected_option])(interaction)
-            if selected_option != "Remove Field":
+            if selected_option != "Remove Field" or len(self.embed.fields) < 25:
                 await interaction.edit_original_response(embed=self.embed)
 
 
