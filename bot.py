@@ -494,7 +494,7 @@ class EmbedSurvey(discord.ui.Modal):
         self.title = title
         super().__init__()
 
-    async def on_submit(self, interaction: discord.Interaction):
+    async def on_submit(self, interaction: discord.Interaction[Bot], /):
         await interaction.response.defer(ephemeral=True)
         self.stop()
 
