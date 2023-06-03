@@ -11,7 +11,17 @@ import discord
 from discord import app_commands
 from discord.ext import commands, tasks
 from dotenv import load_dotenv
-from config_creator import check_for_config_file, save_to_config, read_from_config
+from config_creator import (
+    check_for_config_file,
+    create_config_ram,
+    save_to_config_ram,
+    read_from_config,
+    read_field_values_from_config,
+    add_field_value_to_config_ram,
+    remove_field_from_config_ram,
+    reset_config_ram,
+    save_values_from_ram_to_memory,
+)
 
 load_dotenv()  # loads your local .env file with the discord token
 DISCORD_TOKEN: Optional[str] = os.getenv("DISCORD_TOKEN")
@@ -60,10 +70,8 @@ class Bot(commands.Bot):
             embed_message_id = read_from_config("embed_message_id")
             channel = await self.fetch_channel(embed_channel_id)
         except (discord.NotFound, discord.HTTPException):
-            print("\nChannel Not Found.")
-            save_to_config(
-                embed_channel_id=False, embed_message_id=False, embed_description=False
-            )
+            print("\nChannel Not Found. Resetting values in config.ini.")
+            save_values_from_ram_to_memory()
             return
         try:
             last_message = await channel.fetch_message(embed_message_id)
@@ -71,10 +79,8 @@ class Bot(commands.Bot):
             ctx = await self.get_context(last_message)
             auto_update.start(last_message, embed, ctx)
         except (discord.NotFound, discord.HTTPException):
-            print("\nMessage not Found.")
-            save_to_config(
-                embed_channel_id=False, embed_message_id=False, embed_description=False
-            )
+            print("\nMessage not Found. Resetting values in config.ini.")
+            save_values_from_ram_to_memory()
             return
         print("\nLast message found successfully. Automatic refresh started.")
 
@@ -112,6 +118,20 @@ async def auto_update(
         accesing discoFrd server data; used by discord.ext.commands.
     """
     embed_description = read_from_config("embed_description")
+    if embed.fields is not None:
+        num_of_fields = len(embed.fields)
+        new_descriptions = []
+        old_descriptions = read_field_values_from_config(embed.fields)
+        for description in old_descriptions:
+            new_description = convert_string(ctx, description)
+            new_descriptions.append(new_description)
+        for i in range(0, num_of_fields):
+            embed.set_field_at(
+                i,
+                name=embed.fields[i].name,
+                value=new_descriptions[i],
+                inline=embed.fields[i].inline,
+            )
     output_string = convert_string(ctx, embed_description)
     embed.description = output_string
     now = datetime.datetime.now()
@@ -145,7 +165,7 @@ class EmbedEditingMethods:
     def get_default_embed(self):
         """Sets embed back to default state"""
         self.embed.title = "Title"
-        self.embed.description = "description"
+        self.embed.description = "None"
         self.embed.set_thumbnail(url="https://knr.edu.pl/images/KNR_log.png")
         self.embed.clear_fields()
         if bool(self.embed.author):
@@ -231,7 +251,7 @@ class EmbedEditingMethods:
         await interaction.response.send_modal(embed_survey)
         await embed_survey.wait()
         new_embed_description = embed_survey.children[1]
-        save_to_config(embed_description=str(new_embed_description))
+        save_to_config_ram(embed_description=str(new_embed_description))
         output_string = convert_string(self.ctx, str(embed_survey.children[1]))
         self.embed.title, self.embed.description = (
             str(embed_survey.children[0]),
@@ -312,12 +332,13 @@ class EmbedEditingMethods:
         if vals := select.values:
             for value in vals:
                 self.embed.remove_field(int(value))
+                remove_field_from_config_ram(int(value), self.embed.fields)
 
     async def add_field(self, interaction: discord.Interaction) -> None:
         """Adds a message field to the embed."""
-        if len(self.embed.fields) >= 25:
+        if len(self.embed.fields) >= 5:
             return await interaction.response.send_message(
-                "You can not add more than 25 fields.", ephemeral=True
+                "You can not add more than 5 fields.", ephemeral=True
             )
         embed_survey = EmbedSurvey(title="Add a new field")
         embed_survey.add_item(
@@ -363,6 +384,10 @@ class EmbedEditingMethods:
             self.embed.add_field(
                 name=str(embed_survey.children[0]), value=output_string, inline=inline
             )
+            if self.embed.fields is not None:
+                add_field_value_to_config_ram(
+                    self.embed.fields, str(embed_survey.children[1])
+                )
 
 
 class FieldToRemove(discord.ui.View):
@@ -537,12 +562,12 @@ class EditSelectMenu(discord.ui.Select):
         if selected_option == "Remove Field":
             await creator_methods.remove_field(interaction)
             await interaction.message.edit(embed=self.embed)
-        elif selected_option == "Add Field" and len(self.embed.fields) >= 25:
+        elif selected_option == "Add Field" and len(self.embed.fields) >= 5:
             await creator_methods.add_field(interaction)
             await interaction.message.edit(embed=self.embed)
         elif selected_option in options:
             await getattr(creator_methods, options[selected_option])(interaction)
-            if selected_option != "Remove Field" or len(self.embed.fields) < 25:
+            if selected_option != "Remove Field" or len(self.embed.fields) < 5:
                 await interaction.edit_original_response(embed=self.embed)
 
 
@@ -581,10 +606,11 @@ class SendButton(discord.ui.Button):
                 )
                 embed_message_id = embed_message.id
                 embed_channel_id = channel_select_menu.values[0].id
-                save_to_config(
+                save_to_config_ram(
                     embed_channel_id=embed_channel_id, embed_message_id=embed_message_id
                 )
                 await interaction.message.delete()  # type: ignore
+                save_values_from_ram_to_memory()
                 if auto_update.is_running():
                     auto_update.restart(embed_message, self.embed, self.ctx)
                 else:
@@ -619,6 +645,7 @@ class UpdateButton(discord.ui.Button):
     async def callback(self, interaction: discord.Interaction):
         embed_message = await self.last_message.edit(embed=self.embed)
         await interaction.message.delete()  # type: ignore
+        save_values_from_ram_to_memory()
         auto_update.restart(embed_message, self.embed, self.ctx)
 
 
@@ -642,6 +669,7 @@ class ResetButton(discord.ui.Button):
     async def callback(self, interaction: discord.Interaction):
         creator_methods = EmbedEditingMethods(self.embed, self.ctx)
         creator_methods.get_default_embed()
+        reset_config_ram()
         await interaction.response.edit_message(embed=self.embed)
 
 
@@ -664,6 +692,7 @@ class CancelButton(discord.ui.Button):
 
     async def callback(self, interaction: discord.Interaction):
         await interaction.message.delete()  # type: ignore
+        reset_config_ram()
 
 
 class HelpSelect(discord.ui.Select):
@@ -834,7 +863,7 @@ async def embed_creator(ctx: commands.Context):
         some discord server data. Used by internal methods.
 
     """
-    new_embed = discord.Embed(title="Title", description="description")
+    new_embed = discord.Embed(title="Title", description="None")
     new_embed.set_thumbnail(url="https://knr.edu.pl/images/KNR_log.png")
     view = EmbedCreator(new_embed, ctx)
     await ctx.send(content="**Preview of the embed:**", view=view, embed=new_embed)
@@ -858,15 +887,20 @@ async def embed_update(ctx: commands.Context):
     try:
         embed_channel_id = int(read_from_config("embed_channel_id"))
         channel = bot.get_channel(embed_channel_id)
-        if channel is not False:
-            embed_message_id = int(read_from_config("embed_message_id"))
-            last_message = await channel.fetch_message(embed_message_id)
-            last_embed = last_message.embeds[0]
-            update_flag = True
-            view = EmbedCreator(last_embed, ctx, last_message, update_flag)
-            await ctx.send(
-                content="**Preview of the embed:**", view=view, embed=last_embed
-            )
+        if channel is not None:
+            try:
+                embed_message_id = int(read_from_config("embed_message_id"))
+                last_message = await channel.fetch_message(embed_message_id)
+            except (AttributeError, ValueError):
+                await ctx.send("Could not find last embed.")
+            else:
+                create_config_ram()
+                last_embed = last_message.embeds[0]
+                update_flag = True
+                view = EmbedCreator(last_embed, ctx, last_message, update_flag)
+                await ctx.send(
+                    content="**Preview of the embed:**", view=view, embed=last_embed
+                )
     except (AttributeError, ValueError):
         await ctx.send("Could not find last embed.")
 
@@ -989,7 +1023,7 @@ def search_for_roles(ctx, separated_names_from_str: list, list_for_names: list) 
         separated_names_from_str (list): A list of names to be checked for
         compatibility.
     Returns:
-        list : A list of discord roles or an empty list.
+        list: A list of discord roles or an empty list.
     """
     for role_name in separated_names_from_str:
         role = discord.utils.get(ctx.guild.roles, name=role_name)
