@@ -854,7 +854,10 @@ class EmbedCreator(discord.ui.View):
     description="Create your own embed with Embed Creator",
 )
 @app_commands.guilds(discord.Object(id=os.getenv("GUILD_ID")))
-@commands.has_permissions(administrator=True)
+@commands.check_any(
+    commands.has_guild_permissions(manage_roles=True),
+    commands.has_guild_permissions(view_audit_log=True),
+)
 async def embed_creator(ctx: commands.Context):
     """Creates embed and initializes EmbedCreator object.
 
@@ -875,7 +878,10 @@ async def embed_creator(ctx: commands.Context):
     description="Edit previously deployed embed",
 )
 @app_commands.guilds(discord.Object(id=os.getenv("GUILD_ID")))
-@commands.has_permissions(administrator=True)
+@commands.check_any(
+    commands.has_guild_permissions(manage_roles=True),
+    commands.has_guild_permissions(view_audit_log=True),
+)
 async def embed_update(ctx: commands.Context):
     """Fetches message containing embed and initializes EmbedCreator object.
 
@@ -911,7 +917,10 @@ async def embed_update(ctx: commands.Context):
     description="Read how to use this bot.",
 )
 @app_commands.guilds(discord.Object(id=os.getenv("GUILD_ID")))
-@commands.has_permissions(administrator=True)
+@commands.check_any(
+    commands.has_guild_permissions(manage_roles=True),
+    commands.has_guild_permissions(view_audit_log=True),
+)
 async def bot_help(ctx: commands.Context):
     """Shows the user useful information about the bot.
 
