@@ -13,6 +13,7 @@ from config_creator import (
     reset_config_ram,
     save_values_from_ram_to_memory,
 )
+from embed_methods import EmbedEditingMethods
 from message_syntax_functions import convert_string
 
 
@@ -159,7 +160,7 @@ class EmbedSurvey(discord.ui.Modal):
         title (str): The title of the modal.
     """
 
-    def __init__(self, title: str):
+    def __init__(self, title: str = "Default Title"):
         self.title = title
         super().__init__()
 
@@ -227,10 +228,19 @@ class EditSelectMenu(discord.ui.Select):
             "Color": "edit_color",
         }
         selected_option = self.values[0]
-        from embed_methods import EmbedEditingMethods
-        creator_methods = EmbedEditingMethods(self.embed, self.ctx, self.update_flag)
+
+        embed_survey = EmbedSurvey()
+        select = FieldToRemove(
+            placeholder="Select a field to remove...",
+            options=[],
+            max_values=1,
+            ephemeral=True,
+        )
+        creator_methods = EmbedEditingMethods(
+            self.embed, self.ctx, embed_survey, self.update_flag
+        )
         if selected_option == "Remove Field":
-            await creator_methods.remove_field(interaction)
+            await creator_methods.remove_field(interaction, select)
             await interaction.message.edit(embed=self.embed)
         elif selected_option == "Add Field" and len(self.embed.fields) >= 5:
             await creator_methods.add_field(interaction)
@@ -337,7 +347,6 @@ class ResetButton(discord.ui.Button):
         super().__init__(label="Reset Embed", style=discord.ButtonStyle.blurple)
 
     async def callback(self, interaction: discord.Interaction):
-        from embed_methods import EmbedEditingMethods
         creator_methods = EmbedEditingMethods(self.embed, self.ctx)
         creator_methods.get_default_embed()
         reset_config_ram()

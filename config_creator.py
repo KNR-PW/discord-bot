@@ -1,4 +1,5 @@
 """Helper module for creating the `config.ini` configuration file."""
+
 import configparser
 import os
 from discord.embeds import EmbedProxy
