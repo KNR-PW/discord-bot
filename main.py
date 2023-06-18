@@ -22,7 +22,10 @@ DISCORD_TOKEN: Optional[str] = os.getenv("DISCORD_TOKEN")
 
 
 class Bot(commands.Bot):
-    """A subclass of the `commands.Bot` class."""
+    """
+    A subclass of the `commands.Bot` class.
+    The main class that initializes and operates the bot on the server.
+    """
 
     def __init__(self):
         intents = discord.Intents.default()
