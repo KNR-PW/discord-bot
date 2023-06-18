@@ -15,7 +15,7 @@ from config_creator import (
     read_from_config,
     save_values_from_ram_to_memory,
 )
-from embed_creator import EmbedCreator, HelpMenu, auto_update
+from but_gui import EmbedCreator, HelpMenu, auto_update
 
 load_dotenv()  # loads your local .env file with the discord token
 DISCORD_TOKEN: Optional[str] = os.getenv("DISCORD_TOKEN")
