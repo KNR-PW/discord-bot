@@ -6,15 +6,15 @@ from typing import List, Optional
 from contextlib import suppress
 import discord
 from discord.ext import commands, tasks
-from config_creator import (
+from bot.config_creator import (
     save_to_config_ram,
     read_from_config,
     read_field_values_from_config,
     reset_config_ram,
     save_values_from_ram_to_memory,
 )
-from embed_methods import EmbedEditingMethods
-from message_syntax_functions import convert_string
+from bot.embed_methods import EmbedEditingMethods
+from bot.message_syntax_functions import convert_string
 
 
 @tasks.loop(seconds=15)

@@ -9,13 +9,13 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 from dotenv import load_dotenv
-from config_creator import (
+from bot.config_creator import (
     check_for_config_file,
     create_config_ram,
     read_from_config,
     save_values_from_ram_to_memory,
 )
-from but_gui import EmbedCreator, HelpMenu, auto_update
+from bot.but_gui import EmbedCreator, HelpMenu, auto_update
 
 load_dotenv()  # loads your local .env file with the discord token
 DISCORD_TOKEN: Optional[str] = os.getenv("DISCORD_TOKEN")

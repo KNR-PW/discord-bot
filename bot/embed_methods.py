@@ -3,13 +3,13 @@
 from typing import Optional
 import discord
 from discord.ext import commands
-from config_creator import (
+from bot.config_creator import (
     save_to_config_ram,
     read_from_config,
     add_field_value_to_config_ram,
     remove_field_from_config_ram,
 )
-from message_syntax_functions import convert_string
+from bot.message_syntax_functions import convert_string
 
 
 class EmbedEditingMethods:
