@@ -38,7 +38,7 @@ This project aims to create a personalized bot to help with server management on
    pip install -r requirements.txt
    ```
 
-3. If you decide to run your bot from a personal computer, with only you having access to the code, you can replace `DISCORD_TOKEN` , as well as `GUILD_ID` variable instances inside the quotes in the `bot.py` with your token acquired when creating the bot and server ID numer:
+3. If you decide to run your bot from a personal computer, with only you having access to the code, you can replace `DISCORD_TOKEN` , as well as `GUILD_ID` variable instances inside the quotes in the `main.py` with your token acquired when creating the bot and server ID numer:
 
    ```python
    client.run(os.getenv("DISCORD_TOKEN"))
@@ -46,7 +46,7 @@ This project aims to create a personalized bot to help with server management on
    discord.Object(id=os.getenv("GUILD_ID"))
    ```
 
-   Otherwise, it is advised to store your token and ID number in a separate file. For this create `.env` file inside the same folder as the `bot.py` file. You should store both values like so:
+   Otherwise, it is advised to store your token and ID number in a separate file. For this create `.env` file inside the same folder as the `main.py` file. You should store both values like so:
 
    ```python
    DISCORD_TOKEN="Your token goes here"
@@ -64,7 +64,7 @@ This project aims to create a personalized bot to help with server management on
 4. You can now run your bot. Open a command line and change the directory to the path of your bot files. Next type in the word python, or python3 if you have both versions, followed by the file name of your bot, like this:
 
    ```text
-   python3 bot.py
+   python3 main.py
    ```
 
 ## Discord commands
@@ -104,7 +104,7 @@ The bot can convert relevant commands in text into valuable information when you
 
 - `{count_members [...]}` - Works like `list_members`, but instead of returning names, it returns a number.
 
-- `{member [...]}` - Used to search for a single member from a server. You have to provide a user name from a server in the format "name#XXXX" in place of `[...]`, where "XXXX" is a 4-digit number. In response, the function will return a formatted name that looks like: **@Name**. In addition, if a user has a special nickname set for this server, it will be shown instead of his default name.
+- `{member [...]}` - Used to search for a single member from a server. Returns a formatted name that looks like: **@Name**. In addition, if a user has a special nickname set for this server, it will be displayed instead of his default name.
 
 - `{role [...]}` - Searches for a specific role in the server. Returns a formatted role name that looks like **@Role**. You have to provide a role name in the place of `[...]`.
 
