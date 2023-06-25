@@ -104,7 +104,7 @@ The bot can convert relevant commands in text into valuable information when you
 
 - `{count_members [...]}` - Works like `list_members`, but instead of returning names, it returns a number.
 
-- `{member [...]}` - Used to search for a single member from a server. You have to provide a user name from a server in the format "name#XXXX" in place of `[...]`, where "XXXX" is a 4-digit number. In response, the function will return a formatted name that looks like: **@Name**. In addition, if a user has a special nickname set for this server, it will be shown instead of his default name.
+- `{member [...]}` - Used to search for a single member from a server. Returns a formatted name that looks like: **@Name**. In addition, if a user has a special nickname set for this server, it will be displayed instead of his default name.
 
 - `{role [...]}` - Searches for a specific role in the server. Returns a formatted role name that looks like **@Role**. You have to provide a role name in the place of `[...]`.
 

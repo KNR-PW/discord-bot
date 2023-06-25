@@ -7,37 +7,33 @@ import discord
 def find_single_member(ctx, member_name: str) -> str:
     """Takes the string and returns the corresponding member from the discord server.
 
-    Each name on the discord server looks like this: name#XXXX,
-    where "XXXX" is any 4-digit number. The function reads the entire string,
-    finds where the # symbol is, treats it as a dividing line to create
-    two new strings, which are used to look up the formatted member's name
-    from the server's database.
+    The full nickname must be provided and may or may not include the hashtag and
+    end number depending on whether the user has switched to the new
+    discord nickname system.
 
     Args:
-        ctx (discord.ext.commands.context.Context): necessary parameter when
+        ctx (`discord.ext.commands.context.Context`): necessary parameter when
         accesing discord server data; used by discord.ext.commands.
         member_name (str): A string representing a member to be searched for.
     Returns:
-        str: A string with the mentioned role name from the discord server.
+        str: A string with the mentioned username from the discord server.
     """
-    start_index = member_name.find("#")
-    name = member_name[:start_index]
-    discriminator = member_name[start_index + 1 :]  # noqa: E203
-    discord_member = discord.utils.get(
-        ctx.guild.members, name=f"{name}", discriminator=f"{discriminator}"
-    )
-    if discord_member is not None:
-        discord_member = discord_member.mention
-    else:
-        discord_member = "[None]"
-    return discord_member
+    guild = ctx.guild
+    if guild:
+        members = guild.members
+        for member in members:
+            if str(member) == member_name:
+                username = member.mention
+                return username
+    username = "[None]"
+    return username
 
 
 def find_single_role(ctx, rolename: str) -> str:
     """Takes the string and returns the corresponding role from the discord server.
 
     Args:
-        ctx (discord.ext.commands.context.Context): necessary parameter when
+        ctx (`discord.ext.commands.context.Context`): necessary parameter when
         accesing discord server data; used by discord.ext.commands.
         rolename (str): A string representing a role to be searched for.
     Returns:
@@ -56,7 +52,7 @@ def find_single_text_channel(ctx, channel_name: str) -> str:
     discord server.
 
     Args:
-        ctx (discord.ext.commands.context.Context): necessary parameter when
+        ctx (`discord.ext.commands.context.Context`): necessary parameter when
         accesing discord server data; used by discord.ext.commands.
         channel_name (str): A string representing a text channel name
         to be searched for.
@@ -74,7 +70,7 @@ def find_single_voice_channel(ctx, channel_name: str) -> str:
     discord server.
 
     Args:
-        ctx (discord.ext.commands.context.Context): necessary parameter when
+        ctx (`discord.ext.commands.context.Context`): necessary parameter when
         accesing discord server data; used by discord.ext.commands.
         channel_name (str): A string representing a voice channel name
         to be searched for.
@@ -98,7 +94,7 @@ def search_for_roles(ctx, separated_names_from_str: list, list_for_names: list) 
     roles is generated.
 
     Args:
-        ctx (discord.ext.commands.context.Context): necessary parameter when
+        ctx (`discord.ext.commands.context.Context`): necessary parameter when
         accesing discord server data; used by discord.ext.commands.
         separated_names_from_str (list): A list of names to be checked for
         compatibility.
@@ -133,7 +129,7 @@ def create_set_of_roles(
     Finally, it removes members whose roles had the "not" operator in the message.
 
     Args:
-        ctx (discord.ext.commands.context.Context): necessary parameter when
+        ctx (`discord.ext.commands.context.Context`): necessary parameter when
         accesing discord server data; used by discord.ext.commands.
         message_core_str (str) : A string that may contain roles and logical operators
         roles (list): A list of roles that may contain "and" or "or" operators.
@@ -176,7 +172,7 @@ def role_searching_core(ctx, message_core_str: str) -> set | str:
     the final list of all roles corresponding to the logical sentence.
 
     Args:
-        ctx (discord.ext.commands.context.Context): necessary parameter when
+        ctx (`discord.ext.commands.context.Context`): necessary parameter when
         accesing discord server data; used by discord.ext.commands.
         message_core_str (str): A string that may contain roles and logical operators
     Returns:
@@ -237,7 +233,7 @@ def count_members(ctx, message_core_str: str) -> str:
     Finally, it returns the resulting string.
 
     Args:
-        ctx (discord.ext.commands.context.Context): necessary parameter when
+        ctx (`discord.ext.commands.context.Context`): necessary parameter when
         accesing discord server data; used by discord.ext.commands.
         message_core_str (str): A string that may contain roles and logical operators
     Returns:
@@ -261,7 +257,7 @@ def list_members(ctx, message_core_str: str) -> str:
     Finally, it returns the resulting string.
 
     Args:
-        ctx (discord.ext.commands.context.Context): necessary parameter when
+        ctx (`discord.ext.commands.context.Context`): necessary parameter when
         accesing discord server data; used by discord.ext.commands.
         message_core_str (str): A string that may contain roles and logical operators
     Returns:
@@ -293,9 +289,9 @@ def convert_string(ctx, input_string: str) -> str:
     returns the result of the subfunction, which is text.
 
     Args:
-        ctx (discord.ext.commands.context.Context): necessary parameter when
+        ctx (`discord.ext.commands.context.Context`): necessary parameter when
         accesing discord server data; used by discord.ext.commands.
-        input_string (str): A string that may contain curly brackets ({})
+        input_string (str): A string that may contain curly brackets (`{}`)
     Returns:
         str: A string containing final parsed message.
     """
