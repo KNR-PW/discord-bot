@@ -36,6 +36,8 @@ async def auto_update(
         ctx (discord.ext.commands.context.Context): necessary parameter when
         accesing discoFrd server data; used by discord.ext.commands.
     """
+    now = datetime.datetime.now()
+    print(f'Auto update started. {now.strftime("%d.%m.%Y - %H:%M:%S")}')
     embed_description = read_from_config("embed_description")
     if embed.fields is not None:
         num_of_fields = len(embed.fields)
@@ -53,7 +55,6 @@ async def auto_update(
             )
     output_string = convert_string(ctx, embed_description)
     embed.description = output_string
-    now = datetime.datetime.now()
     embed.set_footer(
         text=f"""Last auto update: {now.strftime('%d.%m.%Y - %H:%M:%S')}"""
     )
